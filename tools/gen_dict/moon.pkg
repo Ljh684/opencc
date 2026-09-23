@@ -1,0 +1,8 @@
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/x/crypto",
+  "moonbitlang/x/fs",
+  "moonbitlang/x/sys",
+}
+
+pkgtype(kind: "executable")

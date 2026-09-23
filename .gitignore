@@ -6,6 +6,9 @@ target/
 *.wast
 *.wat
 
+# `moon info` interface dumps: derived from source, regenerated on demand.
+pkg.generated.mbti
+
 # Scratch space for manual upstream experiments.
 # The pinned data snapshot under data/opencc/ IS committed on purpose.
 vendor/

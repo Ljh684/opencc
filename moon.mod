@@ -23,3 +23,7 @@ keywords = [
 ]
 
 description = "OpenCC-compatible Chinese script conversion (simplified, traditional, Taiwan, Hong Kong, Japanese shinjitai) in pure MoonBit, with no FFI."
+
+import {
+  "moonbitlang/x@0.5.5",
+}

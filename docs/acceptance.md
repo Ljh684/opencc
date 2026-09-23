@@ -15,6 +15,8 @@
 
 | 指标 | 目标 | 产出 |
 | --- | --- | --- |
+| 数据可审计 | 上游快照带 revision 与逐文件 SHA-256，生成前校验 | `data/opencc/REVISION`、`data/opencc/SHA256SUMS` |
+| 生成代码可复现 | `tools/gen_dict --verify` 在生成结果与仓库不符时退出码 1 | `moon run tools/gen_dict -- --verify` |
 | OpenCC 官方 golden 一致性 | 100% 逐字节通过（10 份期望输出，覆盖 5 条链） | `opencc verify` 报告 + CI 记录 |
 | 反方向覆盖（t2s / tw2s / hk2s） | 自建语料 + 词表覆盖率报告 | `reports/coverage.json` |
 | 属性测试 | 分块一致性、非中文不变、幂等性 | `moon test` 中的属性用例 |

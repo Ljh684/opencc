@@ -1,0 +1,352 @@
+// CLI entry point: turns the pinned OpenCC snapshot into compiled MoonBit data.
+//
+// Usage:
+//     moon run tools/gen_dict -- --input data/opencc --out dict
+//     moon run tools/gen_dict -- --verify
+//
+// `--verify` regenerates everything in memory and compares it with what is on
+// disk, so CI fails when the committed data no longer matches the generator.
+
+///|
+/// Read a text file, exiting with a message when it cannot be read.
+fn read_text(path : String) -> String {
+  @fs.read_file_to_string(path) catch {
+    _ => {
+      println("gen_dict: cannot read " + path)
+      @sys.exit(1)
+      ""
+    }
+  }
+}
+
+///|
+/// Read a file as raw bytes, exiting with a message when it cannot be read.
+fn read_bytes(path : String) -> Bytes {
+  @fs.read_file_to_bytes(path) catch {
+    _ => {
+      println("gen_dict: cannot read " + path)
+      @sys.exit(1)
+      b""
+    }
+  }
+}
+
+///|
+/// Write a text file, exiting with a message when it cannot be written.
+fn write_text(path : String, content : String) -> Unit {
+  @fs.write_string_to_file(path, content) catch {
+    _ => {
+      println("gen_dict: cannot write " + path)
+      @sys.exit(1)
+    }
+  }
+}
+
+///|
+/// Lowercase SHA-256 hex digest of a byte buffer.
+fn sha256_hex(data : Bytes) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(data)).to_lower()
+}
+
+///|
+/// Parse `SHA256SUMS` (lines of `<hash>  <path>`) into a lookup table.
+fn read_checksums(path : String) -> Map[String, String] {
+  let checksums : Map[String, String] = Map([])
+  if !@fs.path_exists(path) {
+    return checksums
+  }
+  for raw in read_text(path).split("\n") {
+    let line = raw.trim()
+    if line.is_empty() {
+      continue
+    }
+    match line.split_once("  ") {
+      Some((hash, file)) => checksums.set(file.to_owned(), hash.to_owned())
+      None => ()
+    }
+  }
+  checksums
+}
+
+///|
+/// Read the pinned upstream revision out of `REVISION`.
+fn read_revision(path : String) -> String {
+  for raw in read_text(path).split("\n") {
+    let line = raw.trim()
+    match line.strip_prefix("Revision:") {
+      Some(rest) => {
+        let value = rest.trim().to_owned()
+        return value
+      }
+      None => ()
+    }
+  }
+  "(unknown revision)"
+}
+
+///|
+/// Names of the dictionary text files, sorted for reproducible output.
+/// Compare names lexicographically.
+///
+/// MoonBit's built-in `String` order compares length first, which reads oddly in
+/// a generated index, so this sorts by code unit instead.
+fn compare_names(left : String, right : String) -> Int {
+  let limit = if left.length() < right.length() {
+    left.length()
+  } else {
+    right.length()
+  }
+  let mut index = 0
+  while index < limit {
+    let order = left.unsafe_get(index).compare(right.unsafe_get(index))
+    if order != 0 {
+      return order
+    }
+    index = index + 1
+  }
+  left.length().compare(right.length())
+}
+
+///|
+/// Names of the dictionary text files, sorted for reproducible output.
+fn dictionary_files(dir : String) -> Array[String] {
+  let names : Array[String] = []
+  try {
+    for name in @fs.read_dir(dir).iter() {
+      if name.has_suffix(".txt") {
+        names.push(name)
+      }
+    }
+  } catch {
+    _ => {
+      println("gen_dict: cannot list " + dir)
+      @sys.exit(1)
+    }
+  }
+  names.sort_by(compare_names)
+  names
+}
+
+///|
+/// In verify mode, check that `dict/moon.pkg` still ignores every generated file.
+///
+/// The file is not compared byte for byte: `moon fmt` owns the formatting of
+/// package configuration, so the generator only guarantees its content, and
+/// regeneration rewrites it whenever a dictionary is added.
+fn verify_pkg_ignores(path : String, bindings : Array[String]) -> Int {
+  if !@fs.path_exists(path) {
+    println("gen_dict: missing " + path)
+    return 1
+  }
+  let text = read_text(path)
+  let mut problems = 0
+  if !text.contains("\"manifest.mbt\"") {
+    println("gen_dict: " + path + " does not ignore manifest.mbt")
+    problems = problems + 1
+  }
+  for binding in bindings {
+    if !text.contains("\"" + binding + ".mbt\"") {
+      println("gen_dict: " + path + " does not ignore " + binding + ".mbt")
+      problems = problems + 1
+    }
+  }
+  problems
+}
+
+///|
+/// Write a generated file, or compare it with the committed one in verify mode.
+///
+/// Returns 1 when verify mode found drift, 0 otherwise.
+fn sync_file(path : String, content : String, verify : Bool) -> Int {
+  if verify {
+    if !@fs.path_exists(path) {
+      println("gen_dict: missing " + path)
+      return 1
+    }
+    if read_text(path) == content {
+      0
+    } else {
+      println("gen_dict: stale " + path + " (re-run without --verify)")
+      1
+    }
+  } else {
+    write_text(path, content)
+    0
+  }
+}
+
+///|
+/// Build the manifest module that records where every dictionary came from.
+fn emit_manifest(
+  repository : String,
+  revision : String,
+  rows : Array[String],
+) -> String {
+  let out = StringBuilder()
+  out.write_string("// Generated by tools/gen_dict — do not edit by hand.\n")
+  out.write_string("//\n")
+  out.write_string(
+    "// One row per dictionary: the generated module, the upstream file it\n",
+  )
+  out.write_string(
+    "// came from, how many entries it holds, and the SHA-256 of that file.\n\n",
+  )
+  out.write_string("///|\n")
+  out.write_string("pub struct DictSource {\n")
+  out.write_string("  binding : String\n")
+  out.write_string("  file : String\n")
+  out.write_string("  entries : Int\n")
+  out.write_string("  sha256 : String\n")
+  out.write_string("}\n\n")
+  out.write_string("///| Upstream repository of the data snapshot.\n")
+  out.write_string("pub let upstream_repository : String = \"")
+  out.write_string(repository)
+  out.write_string("\"\n\n")
+  out.write_string("///| Upstream revision of the data snapshot.\n")
+  out.write_string("pub let upstream_revision : String = \"")
+  out.write_string(revision)
+  out.write_string("\"\n\n")
+  out.write_string("///| Every dictionary compiled into this module.\n")
+  out.write_string("pub let sources : Array[DictSource] = [\n")
+  for row in rows {
+    out.write_string(row)
+  }
+  out.write_string("]\n")
+  out.to_string()
+}
+
+///|
+/// Entry point.
+fn main {
+  let args = @env.args()
+  let mut input = "data/opencc"
+  let mut out_dir = "dict"
+  let mut verify = false
+  // Args may or may not carry the executable as argv[0] depending on the
+  // backend, so start at the first flag.
+  let mut index = 0
+  while index < args.length() && !args[index].has_prefix("--") {
+    index = index + 1
+  }
+  while index < args.length() {
+    let arg = args[index]
+    if arg == "--input" && index + 1 < args.length() {
+      input = args[index + 1]
+      index = index + 2
+    } else if arg == "--out" && index + 1 < args.length() {
+      out_dir = args[index + 1]
+      index = index + 2
+    } else if arg == "--verify" {
+      verify = true
+      index = index + 1
+    } else {
+      println("gen_dict: ignoring argument " + arg)
+      index = index + 1
+    }
+  }
+
+  let checksums = read_checksums(input + "/SHA256SUMS")
+  let revision = read_revision(input + "/REVISION")
+  let dict_dir = input + "/dictionary"
+  let files = dictionary_files(dict_dir)
+  if files.is_empty() {
+    println("gen_dict: no dictionary files found in " + dict_dir)
+    @sys.exit(1)
+  }
+
+  let modules : Array[String] = []
+  let rows : Array[String] = []
+  let mut problems = 0
+  let mut total_entries = 0
+
+  for file in files {
+    let path = dict_dir + "/" + file
+    let digest = sha256_hex(read_bytes(path))
+    let rel = "dictionary/" + file
+    match checksums.get(rel) {
+      Some(expected) =>
+        if expected != digest {
+          println("gen_dict: checksum mismatch for " + rel)
+          problems = problems + 1
+        }
+      None => {
+        println("gen_dict: no checksum recorded for " + rel)
+        problems = problems + 1
+      }
+    }
+
+    let parsed = parse_dictionary(read_text(path))
+    if parsed.skipped > 0 {
+      println(
+        "gen_dict: " +
+        file +
+        " has " +
+        parsed.skipped.to_string() +
+        " unparsable line(s)",
+      )
+      problems = problems + 1
+    }
+
+    let binding = module_name(file)
+    modules.push(binding)
+    total_entries = total_entries + parsed.entries.length()
+    problems = problems +
+      sync_file(
+        out_dir + "/" + binding + ".mbt",
+        emit_dictionary(binding, file, parsed.entries),
+        verify,
+      )
+    rows.push(
+      "  { binding: \"" +
+      binding +
+      "\", file: \"" +
+      file +
+      "\", entries: " +
+      parsed.entries.length().to_string() +
+      ", sha256: \"" +
+      digest +
+      "\" },\n",
+    )
+  }
+
+  problems = problems +
+    sync_file(
+      out_dir + "/manifest.mbt",
+      emit_manifest("https://github.com/BYVoid/OpenCC", revision, rows),
+      verify,
+    )
+  let pkg_path = out_dir + "/moon.pkg"
+  if verify {
+    problems = problems + verify_pkg_ignores(pkg_path, modules)
+  } else {
+    write_text(pkg_path, emit_pkg(modules))
+  }
+
+  if problems > 0 {
+    println("gen_dict: " + problems.to_string() + " problem(s) found")
+    @sys.exit(1)
+  }
+  if verify {
+    println(
+      "gen_dict: up to date (" +
+      modules.length().to_string() +
+      " dictionaries, " +
+      total_entries.to_string() +
+      " entries, revision " +
+      revision +
+      ")",
+    )
+  } else {
+    println(
+      "gen_dict: wrote " +
+      (modules.length() + 2).to_string() +
+      " files (" +
+      modules.length().to_string() +
+      " dictionaries, " +
+      total_entries.to_string() +
+      " entries, revision " +
+      revision +
+      ")",
+    )
+  }
+}

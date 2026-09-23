@@ -3,9 +3,13 @@
 本目录由 `tools/gen_dict` 生成，**请勿手工编辑**。
 
 ```
-dict/<dict_name>.mbt        单个词典：排序后的 (key, value) 数组 + 元数据
+dict/<binding>.mbt          单个词典：`(key, value)` 数组，大词典按 4096 条分片
 dict/manifest.mbt           词典清单、上游 revision、每个文件的 SHA-256
+dict/moon.pkg               生成的包配置（含 formatter.ignore）
 ```
+
+当前快照：19 个词典、75543 条目、约 2.1 MB 生成源码；最大的是 `st_phrases.mbt`
+（49238 条，13 个分片）。
 
 生成步骤：
 
