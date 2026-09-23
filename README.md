@@ -4,8 +4,12 @@
 
 简体 ↔ 繁体 ↔ 台湾正体 ↔ 香港繁体 ↔ 日本新字体，包含词组与地区用词转换，行为对齐 [OpenCC](https://github.com/BYVoid/OpenCC)，并以 OpenCC 官方语料的一致性通过率作为验收标准。
 
-> 状态：**初始骨架（WIP）**。转换引擎的核心链路（词典 → 最长匹配 → 转换链）已经就位，
-> 词典数据管线与官方一致性测试正在实现中。请见下方[路线图](#路线图)。
+仓库：<https://github.com/Ljh684/opencc>
+
+> 状态：**开发中（WIP）**。已完成：仓库骨架与 Apache-2.0 许可、转换引擎的核心链路
+> （词典 → 最长匹配 → 转换链）、上游 OpenCC 数据快照（19 个词典 / 19 个配置 / 官方
+> golden 语料，含 revision 与逐文件校验和）。进行中：词典生成器与官方一致性测试，
+> 见下方[路线图](#路线图)。
 
 ---
 
@@ -80,9 +84,24 @@ let out = chain.apply("内存泄漏与软件优化")
 ## 数据来源与许可
 
 - 本仓库的 MoonBit 代码以 **Apache-2.0** 发布，见 [LICENSE](LICENSE)。
-- 词典数据、转换配置与一致性语料派生自 **OpenCC**（Apache-2.0），
-  来源、固定 revision 与生成物哈希记录在 [NOTICE](NOTICE)。
-- 生成的数据模块会附带每个文件的 SHA-256，CI 会校验「重新生成的结果与仓库一致」。
+- 词典、转换配置与一致性语料派生自 **OpenCC**（Apache-2.0），
+  来源、固定 revision 与归档哈希记录在 [NOTICE](NOTICE) 与 `data/opencc/REVISION`。
+- 上游数据**随仓库提交**，项目与 CI 全流程离线可跑；`data/opencc/SHA256SUMS`
+  记录每个文件的 SHA-256，生成器与 CI 在生成代码前先校验。
+
+```
+data/opencc/dictionary/   19 个词典（单字、词组、地区变体、兼容汉字、篆书）
+data/opencc/config/       19 个转换配置 + schema
+data/opencc/SHA256SUMS    逐文件校验和
+data/opencc/REVISION      上游仓库、revision、归档哈希与选择理由
+test/fixtures/golden/     官方一致性语料（1 份输入 + 10 份期望输出）
+```
+
+仅在需要升级上游 revision 时刷新数据快照：
+
+```powershell
+pwsh -File scripts/fetch-opencc-data.ps1 -Revision <新 revision>
+```
 
 ## 开发
 
@@ -98,21 +117,22 @@ pwsh -File scripts/setup-git.ps1
 moon check
 moon test
 
-# 4. 拉取上游 OpenCC 数据（词典 + 官方 golden 语料）
-pwsh -File scripts/fetch-opencc-data.ps1
+# 4. 可选：刷新上游 OpenCC 数据快照（已在仓库内，仅升级 revision 时执行）
+#    pwsh -File scripts/fetch-opencc-data.ps1 -Revision <新 revision>
 ```
 
 ### 仓库结构
 
 ```
 moon.mod               模块清单
+data/opencc/           上游词典与配置快照（含 REVISION / SHA256SUMS）
 src/core/              词典、最长匹配、转换链（引擎核心）
 src/config/            19 个内置配置的定义
-src/data/              生成的词典数据（由 tools/gen_dict 产出）
+src/data/              编译期词典数据模块（由 tools/gen_dict 产出）
 cmd/opencc/            CLI 入口
 tools/gen_dict/        词典 → MoonBit 数据 生成器
 scripts/               环境与数据准备的 PowerShell 脚本
-test/fixtures/golden/  OpenCC 官方一致性语料
+test/fixtures/golden/  OpenCC 官方一致性语料（验收基准）
 docs/                  设计文档与验收标准
 ```
 
@@ -120,7 +140,7 @@ docs/                  设计文档与验收标准
 
 | 周次 | 目标 | 完成标志 |
 | --- | --- | --- |
-| W1 | 词典数据管线 + 最长匹配引擎 + `s2t` / `t2s` 链路 | `moon check` / `moon test` 通过，`s2t` 通过官方 golden |
+| W1 | 词典生成器 + 引擎接入真实数据 + `s2t` / `t2s` 链路 | `moon check` / `moon test` 通过，`s2t` 通过官方 golden |
 | W2 | `union` / `short_circuit` 组合语义 + 19 配置 + CLI | `opencc -c <config>` 端到端可用 |
 | W3 | 全量官方一致性 + 属性测试 + 体积与性能优化 | 一致性报告与基准数据入库 |
 | W4 | 文档、CI（多后端）、发布到 mooncakes | README / 演示 / 正式发布 |

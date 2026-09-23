@@ -1,23 +1,31 @@
 <#
 .SYNOPSIS
-    Fetch the pinned OpenCC dictionaries and golden test corpus into vendor/.
+    Refresh the pinned OpenCC dictionaries, configurations and golden corpus.
 
 .DESCRIPTION
-    Downloads the OpenCC source archive for a pinned revision, extracts only the
-    data/ and test/golden/ directories, records the revision and archive checksum
-    in vendor/OPENCC-REVISION.txt, and leaves vendor/ untouched otherwise.
-    vendor/ is git-ignored: it is an input for tools/gen_dict, not a source artifact.
+    Downloads the OpenCC source archive for a pinned revision and refreshes:
+
+        data/opencc/dictionary/     upstream dictionaries (.txt)
+        data/opencc/config/         upstream conversion configurations (.json)
+        data/opencc/OPENCC-LICENSE  upstream license text
+        data/opencc/REVISION        revision + archive checksum + rationale
+        data/opencc/SHA256SUMS      per-file checksum, verified by tools/gen_dict
+        test/fixtures/golden/       upstream golden corpus (the acceptance oracle)
+
+    The data is committed to this repository on purpose: the project, its tests and
+    its CI all run offline, and the checksums make the snapshot auditable. Run this
+    script only when intentionally moving to a new upstream revision.
 
 .EXAMPLE
     pwsh -File scripts/fetch-opencc-data.ps1
-    pwsh -File scripts/fetch-opencc-data.ps1 -Revision master
+    pwsh -File scripts/fetch-opencc-data.ps1 -Revision ver.1.5.0
 #>
 
 [CmdletBinding()]
 param(
-    # Pinned upstream revision. Use a tag (e.g. ver.1.1.9) or a commit SHA.
-    [string]$Revision = "master",
-    [string]$Destination = "vendor/opencc",
+    # Pinned upstream revision: a commit SHA (preferred) or a tag.
+    [string]$Revision = "b087c2612ce808f464b0925fc1c497d24971d179",
+    [string]$Destination = "data/opencc",
     [string]$Repository = "BYVoid/OpenCC"
 )
 
@@ -25,6 +33,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $destPath = Join-Path $repoRoot $Destination
+$goldenPath = Join-Path $repoRoot "test/fixtures/golden"
 $zipPath = Join-Path ([System.IO.Path]::GetTempPath()) "opencc-$([guid]::NewGuid().ToString('N')).zip"
 $extractPath = Join-Path ([System.IO.Path]::GetTempPath()) "opencc-$([guid]::NewGuid().ToString('N'))"
 
@@ -39,23 +48,50 @@ Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
 $root = Get-ChildItem -Path $extractPath -Directory | Select-Object -First 1
 if (-not $root) { throw "Extracted archive did not contain a root directory." }
 
-if (Test-Path $destPath) { Remove-Item -Recurse -Force $destPath }
-New-Item -ItemType Directory -Path $destPath -Force | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $destPath "dictionary/staging") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $destPath "config") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $goldenPath "input") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $goldenPath "output") | Out-Null
 
-Copy-Item -Path (Join-Path $root.FullName "data") -Destination $destPath -Recurse
-New-Item -ItemType Directory -Path (Join-Path $destPath "test") -Force | Out-Null
-Copy-Item -Path (Join-Path $root.FullName "test/golden") -Destination (Join-Path $destPath "test") -Recurse
+# Dictionaries: text only. The upstream C++ test files and BUILD.bazel in the same
+# directory are not part of the data snapshot.
+Get-ChildItem -Path (Join-Path $root.FullName "data/dictionary") -Recurse -File -Filter *.txt | ForEach-Object {
+    $rel = $_.FullName.Substring((Join-Path $root.FullName "data/dictionary").Length + 1)
+    $target = Join-Path (Join-Path $destPath "dictionary") $rel
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
+    Copy-Item -LiteralPath $_.FullName -Destination $target -Force
+}
+
+Copy-Item -Path (Join-Path $root.FullName "data/config/*.json") -Destination (Join-Path $destPath "config") -Force
 Copy-Item -Path (Join-Path $root.FullName "LICENSE") -Destination (Join-Path $destPath "OPENCC-LICENSE") -Force
 
+Copy-Item -Path (Join-Path $root.FullName "test/golden/input/*") -Destination (Join-Path $goldenPath "input") -Force
+Copy-Item -Path (Join-Path $root.FullName "test/golden/output/*") -Destination (Join-Path $goldenPath "output") -Force
+
+# Checksums cover the data snapshot only: REVISION and SHA256SUMS describe it, so
+# they are intentionally not part of it.
+$sumPath = Join-Path $destPath "SHA256SUMS"
+$lines = Get-ChildItem -Path $destPath -Recurse -File |
+    Where-Object { $_.Name -notin @("SHA256SUMS", "REVISION") } |
+    Sort-Object { $_.FullName } |
+    ForEach-Object {
+        $rel = $_.FullName.Substring($destPath.Length + 1).Replace("\", "/")
+        "{0}  {1}" -f (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $rel
+    }
+$lines | Set-Content -Path $sumPath -Encoding utf8
+
 @(
-    "repository: https://github.com/$Repository",
-    "requested revision: $Revision",
-    "archive sha256: $hash",
-    "fetched at: $((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))"
-) | Set-Content -Path (Join-Path $destPath "OPENCC-REVISION.txt") -Encoding utf8
+    "Upstream:  https://github.com/$Repository",
+    "Revision:  $Revision",
+    "Archive:   $url",
+    "Archive-SHA256: $hash",
+    "Fetched:   $((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))",
+    "License:   Apache-2.0 (see OPENCC-LICENSE in this directory)"
+) | Set-Content -Path (Join-Path $destPath "REVISION") -Encoding utf8
 
 Remove-Item -Recurse -Force $extractPath
 Remove-Item -Force $zipPath
 
 Write-Host "OpenCC data ready at $destPath"
+Write-Host "Golden corpus refreshed at $goldenPath"
 Write-Host "Next: moon run tools/gen_dict -- --input $Destination --out src/data"

@@ -12,13 +12,15 @@ SHA-256，CI 重新生成后比对，确保仓库里的数据与上游一致。
 
 ## 输入
 
-`vendor/opencc/`（由 `scripts/fetch-opencc-data.ps1` 下载，git-ignored）：
+`data/opencc/`（随仓库提交，由 `scripts/fetch-opencc-data.ps1` 刷新）：
 
 ```
-vendor/opencc/data/dictionary/*.txt      词组与单字词典（每行 `key<TAB>value [value...]`）
-vendor/opencc/data/config/*.json         转换配置（normalization / segmentation / conversion_chain）
-vendor/opencc/test/golden/input/*.txt    一致性测试输入
-vendor/opencc/test/golden/output/*.txt   一致性测试期望输出
+data/opencc/dictionary/*.txt             词组与单字词典（每行 `key<TAB>value [value...]`）
+data/opencc/config/*.json                转换配置（normalization / segmentation / conversion_chain）
+data/opencc/SHA256SUMS                   每个数据文件的 SHA-256，生成前先校验
+data/opencc/REVISION                     上游仓库、revision、归档哈希
+test/fixtures/golden/input/*.txt         一致性测试输入
+test/fixtures/golden/output/*.txt        一致性测试期望输出
 ```
 
 ## 输出
@@ -42,9 +44,12 @@ test/fixtures/golden/        从 vendor 复制的一致性语料（随仓库提�
 
 ```powershell
 pwsh -File scripts/fetch-opencc-data.ps1
-moon run tools/gen_dict -- --input vendor/opencc --out src/data
+moon run tools/gen_dict -- --input data/opencc --out src/data
 moon run tools/gen_dict -- --verify      # 只校验，不写文件；CI 用
 ```
+
+生成器进入 `data/opencc` 前先按 `SHA256SUMS` 校验，任何不一致都直接失败，
+避免在数据被改动的情况下生成代码。
 
 ## 状态
 

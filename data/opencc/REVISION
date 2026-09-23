@@ -1,0 +1,17 @@
+Upstream:  https://github.com/BYVoid/OpenCC
+Revision:  b087c2612ce808f464b0925fc1c497d24971d179 (master)
+Released:  2026-09-22T06:01:03Z
+Archive:   https://codeload.github.com/BYVoid/OpenCC/zip/b087c2612ce808f464b0925fc1c497d24971d179
+Archive-SHA256: 0B68ADB903263D9C11857E33BD7309FBD73F22BFCB74C7F964F90BD37C6AF5EA
+Fetched:   2026-09-24
+License:   Apache-2.0 (see OPENCC-LICENSE in this directory)
+
+Contents:
+    dictionary/   upstream data/dictionary/*.txt (19 dictionaries + staging/Allographs.txt)
+    config/       upstream data/config/*.json (19 conversion configurations + schema)
+    SHA256SUMS    SHA-256 of every file above, for verification by tools/gen_dict
+
+Why a commit hash instead of the latest release tag:
+    release ver.1.4.2 does not ship the seal-script configurations
+    (s2seal / seal2t / t2seal), while this project exposes all 19 official
+    configurations. A commit hash is immutable, so this is still a reproducible pin.

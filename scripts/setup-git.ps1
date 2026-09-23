@@ -12,7 +12,7 @@
 
     Then create the GitHub repository and push:
 
-        git remote add origin https://github.com/Ljh684/opencc.mbt.git
+        git remote add origin https://github.com/Ljh684/opencc.git
         git push -u origin main
 #>
 
@@ -21,7 +21,7 @@ param(
     [string]$UserName = "Ljh684",
     [string]$UserEmail = "2662386825@qq.com",
     [string]$Branch = "main",
-    [string]$Message = "chore: initial repository skeleton for opencc.mbt"
+[string]$Message = "chore: initial repository skeleton for opencc"
 )
 
 $ErrorActionPreference = "Stop"

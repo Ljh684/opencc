@@ -11,13 +11,17 @@ Copyright 2010-2026 Carbo Kuo and the OpenCC contributors,
 licensed under the Apache License, Version 2.0.
 
 Upstream revision (pinned):
-    PENDING - filled in by scripts/fetch-opencc-data.ps1
+    BYVoid/OpenCC @ b087c2612ce808f464b0925fc1c497d24971d179 (master, 2026-09-22)
+    archive SHA-256: 0B68ADB903263D9C11857E33BD7309FBD73F22BFCB74C7F964F90BD37C6AF5EA
+    see data/opencc/REVISION and data/opencc/SHA256SUMS
 
 Derived artifacts in this repository:
-    src/data/*.mbt              generated dictionary modules (generated code)
-    src/config/*.mbt            conversion-chain definitions transcribed from
-                                OpenCC's data/config/*.json
+    data/opencc/dictionary/*    upstream dictionaries (verbatim)
+    data/opencc/config/*        upstream conversion configurations (verbatim)
     test/fixtures/golden/*      upstream golden test corpus (verbatim)
+    src/data/*.mbt              generated dictionary modules (generated code)
+    src/config/*.mbt            conversion-chain definitions transcribed from the
+                                configurations above
 
 The generator records a SHA-256 of every generated file so that regeneration
 can be verified in CI. Dictionaries remain under the Apache License, Version
