@@ -1,0 +1,5 @@
+import {
+  "Ljh684/opencc/config",
+}
+
+pkgtype(kind: "executable")

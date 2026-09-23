@@ -1,0 +1,25 @@
+opencc.mbt
+Copyright 2026 Ljh684
+
+-------------------------------------------------------------------------------
+Data and test fixtures derived from OpenCC
+-------------------------------------------------------------------------------
+
+This product includes dictionary data, conversion configuration definitions, and
+test fixtures derived from OpenCC (https://github.com/BYVoid/OpenCC),
+Copyright 2010-2026 Carbo Kuo and the OpenCC contributors,
+licensed under the Apache License, Version 2.0.
+
+Upstream revision (pinned):
+    PENDING - filled in by scripts/fetch-opencc-data.ps1
+
+Derived artifacts in this repository:
+    src/data/*.mbt              generated dictionary modules (generated code)
+    src/config/*.mbt            conversion-chain definitions transcribed from
+                                OpenCC's data/config/*.json
+    test/fixtures/golden/*      upstream golden test corpus (verbatim)
+
+The generator records a SHA-256 of every generated file so that regeneration
+can be verified in CI. Dictionaries remain under the Apache License, Version
+2.0; the MoonBit implementation in this repository is distributed under the
+same license.

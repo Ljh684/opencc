@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MoonBit toolchain
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+
+      - name: Toolchain version
+        run: moon version
+
+      - name: Type check
+        run: moon check
+
+      - name: Unit tests
+        run: moon test
+
+      - name: Build all targets
+        run: |
+          moon build --target wasm-gc --release
+          moon build --target js --release
+          moon build --target native --release
+
+  golden:
+    runs-on: ubuntu-latest
+    # Enabled once tools/gen_dict and the golden corpus land (W1/W3).
+    if: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MoonBit toolchain
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+
+      - name: Verify generated data is up to date
+        run: |
+          curl -fsSL "https://codeload.github.com/BYVoid/OpenCC/zip/master" -o opencc.zip
+          unzip -q opencc.zip -d vendor-src
+          mv vendor-src/OpenCC-* vendor/opencc
+          moon run tools/gen_dict -- --verify
+
+      - name: Official golden corpus
+        run: moon run cmd/opencc -- verify --golden test/fixtures/golden
