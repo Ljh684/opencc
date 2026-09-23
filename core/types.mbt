@@ -5,15 +5,21 @@
 // a group is either union or short_circuit.
 
 ///|
-/// A single dictionary: an array of `key -> value` entries.
+/// A dictionary, indexed by the first UTF-16 code unit of every key.
+///
+/// Grouping by the first code unit is what keeps lookups cheap: a position only
+/// ever scans the entries whose key could start there. Within a bucket the
+/// longest key comes first, so the first hit is the longest match and the scan
+/// can stop immediately.
 pub struct Dict {
   name : String
-  entries : Array[(String, String)]
+  buckets : Map[UInt16, Array[(String, String)]]
+  size : Int
 }
 
 ///|
 /// How the dictionaries of a group are consulted.
-pub enum GroupPolicy {
+pub(all) enum GroupPolicy {
   /// Consider every dictionary and keep the longest match.
   Union
   /// Use the first dictionary that matches.
@@ -35,12 +41,51 @@ pub struct Chain {
 }
 
 ///|
-/// Build a dictionary from raw pairs.
+/// Longer keys first, so a bucket scan stops at the longest match.
+fn longest_first(left : (String, String), right : (String, String)) -> Int {
+  right.0.length().compare(left.0.length())
+}
+
+///|
+/// Build a dictionary and its index from raw pairs.
 ///
-/// Entries are kept as given; `tools/gen_dict` emits them sorted by key length
-/// so the matcher can scan in one pass.
-pub fn Dict::from_pairs(name : String, pairs : Array[(String, String)]) -> Dict {
-  { name, entries: pairs, }
+/// Entries with an empty key are dropped: they could never advance the cursor.
+pub fn Dict::new(name : String, pairs : Array[(String, String)]) -> Dict {
+  let buckets : Map[UInt16, Array[(String, String)]] = Map([])
+  let groups : Array[Array[(String, String)]] = []
+  let mut size = 0
+  for pair in pairs {
+    let key = pair.0
+    if key.is_empty() {
+      continue
+    }
+    size = size + 1
+    let first = key.unsafe_get(0)
+    match buckets.get(first) {
+      Some(bucket) => bucket.push(pair)
+      None => {
+        let bucket : Array[(String, String)] = [pair]
+        buckets.set(first, bucket)
+        groups.push(bucket)
+      }
+    }
+  }
+  for bucket in groups {
+    bucket.sort_by(longest_first)
+  }
+  { name, buckets, size, }
+}
+
+///|
+/// Number of entries in the dictionary.
+pub fn Dict::size(self : Dict) -> Int {
+  self.size
+}
+
+///|
+/// Build a dictionary group.
+pub fn DictGroup::new(policy : GroupPolicy, dicts : Array[Dict]) -> DictGroup {
+  { policy, dicts, }
 }
 
 ///|

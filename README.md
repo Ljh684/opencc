@@ -9,8 +9,9 @@
 > 状态：**开发中（WIP）**。已完成：仓库骨架与 Apache-2.0 许可、上游 OpenCC 数据快照
 > （19 个词典 / 19 个配置 / 官方 golden 语料）、转换引擎核心链路（词典 → 最长匹配 →
 > 转换链）、词典生成器（`tools/gen_dict`，把 19 个词典编译成 75543 条 MoonBit 数据，
-> 带 SHA-256 校验与 `--verify` 幂等检查）。当前 `moon check` 通过、9 个单元测试通过。
-> 进行中：词典表示与查找优化、`s2t` 打通官方 golden，见下方[路线图](#路线图)。
+> 带 SHA-256 校验与 `--verify` 幂等检查）、按首字索引的词典查找（实测 491 码元/ms，
+> 见 [docs/performance.md](docs/performance.md)）。当前 `moon check` 通过、
+> 13 个单元测试通过。进行中：`s2t` 打通官方 golden，见下方[路线图](#路线图)。
 
 ---
 
@@ -149,6 +150,9 @@ docs/                  设计文档与验收标准
 | W2 | `union` / `short_circuit` 组合语义 + 19 配置 + CLI | `opencc -c <config>` 端到端可用 |
 | W3 | 全量官方一致性 + 属性测试 + 体积与性能优化 | 一致性报告与基准数据入库 |
 | W4 | 文档、CI（多后端）、发布到 mooncakes | README / 演示 / 正式发布 |
+
+（F4 已完成：`core/Dict` 改为按首字分组 + 组内长度降序的索引；`tools/bench_lookup`
+给出可复现的吞吐数字。）
 
 ## 已知限制
 

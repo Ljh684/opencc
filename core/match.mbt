@@ -1,8 +1,7 @@
 // Longest-match lookup and per-pass application.
 //
-// This first iteration scans the dictionary array linearly: it is correct and
-// easy to read, and it is replaced by a sorted-array / prefix index once
-// tools/gen_dict produces the real dictionaries (see docs/design.md).
+// Lookups go through the first-code-unit index built in `Dict::new`, so a
+// position only scans entries whose key can start there (see docs/design.md).
 
 ///|
 /// Longest match of `text` starting at `start`.
@@ -15,25 +14,24 @@ pub fn Dict::match_at(
   start : Int,
 ) -> (Int, String)? {
   let end = text.length()
-  let mut best_len = 0
-  let mut best_value = ""
-  for entry in self.entries {
-    let key = entry.0
-    let key_len = key.length()
-    if key_len > best_len {
-      if start + key_len <= end {
-        let candidate = text[start:start + key_len]
-        if candidate.equal_to_string(key) {
-          best_len = key_len
-          best_value = entry.1
+  if start >= end {
+    return None
+  }
+  match self.buckets.get(text.unsafe_get(start)) {
+    None => None
+    Some(bucket) => {
+      // Buckets are sorted longest-first, so the first hit is the longest match.
+      for pair in bucket {
+        let key = pair.0
+        let key_len = key.length()
+        if start + key_len <= end {
+          if text[start:start + key_len].equal_to_string(key) {
+            return Some((key_len, pair.1))
+          }
         }
       }
+      None
     }
-  }
-  if best_len > 0 {
-    Some((best_len, best_value))
-  } else {
-    None
   }
 }
 

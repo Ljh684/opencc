@@ -1,0 +1,9 @@
+import {
+  "Ljh684/opencc/core",
+  "Ljh684/opencc/dict",
+  "moonbitlang/core/env",
+  "moonbitlang/x/fs",
+  "moonbitlang/x/sys",
+}
+
+pkgtype(kind: "executable")
