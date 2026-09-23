@@ -14,12 +14,12 @@
 OpenCC 词典 (.txt)                OpenCC 配置 (.json)
         │                                  │
         ▼                                  ▼
-   tools/gen_dict  ──────────────►  src/data/*.mbt, src/config/chain_data.mbt
+   tools/gen_dict  ──────────────►  dict/*.mbt, config/chain_data.mbt
         │                                  │
         └──────────► 编译期常量 ◄──────────┘
                             │
                             ▼
-                    运行期转换引擎（无 I/O）
+                     运行期转换引擎（无 I/O）
 ```
 
 生成期负责去注释、去重、排序、值合并；运行期只做查表与匹配。

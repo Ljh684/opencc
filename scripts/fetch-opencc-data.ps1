@@ -94,4 +94,4 @@ Remove-Item -Force $zipPath
 
 Write-Host "OpenCC data ready at $destPath"
 Write-Host "Golden corpus refreshed at $goldenPath"
-Write-Host "Next: moon run tools/gen_dict -- --input $Destination --out src/data"
+Write-Host "Next: moon run tools/gen_dict -- --input $Destination --out dict"

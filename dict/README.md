@@ -1,17 +1,17 @@
-# src/data — 生成的词典数据
+# dict — 编译期词典数据
 
 本目录由 `tools/gen_dict` 生成，**请勿手工编辑**。
 
 ```
-src/data/<dict_name>.mbt    单个词典：排序后的 (key, value) 数组 + 元数据
-src/data/manifest.mbt       词典清单、上游 revision、每个文件的 SHA-256
+dict/<dict_name>.mbt        单个词典：排序后的 (key, value) 数组 + 元数据
+dict/manifest.mbt           词典清单、上游 revision、每个文件的 SHA-256
 ```
 
 生成步骤：
 
 ```powershell
 pwsh -File scripts/fetch-opencc-data.ps1                 # 下载上游数据到 vendor/
-moon run tools/gen_dict -- --input vendor/opencc --out src/data
+moon run tools/gen_dict -- --input data/opencc --out dict
 ```
 
 约定：

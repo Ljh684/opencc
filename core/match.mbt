@@ -4,20 +4,30 @@
 // easy to read, and it is replaced by a sorted-array / prefix index once
 // tools/gen_dict produces the real dictionaries (see docs/design.md).
 
+///|
 /// Longest match of `text` starting at `start`.
 ///
 /// Returns the matched length and its replacement, or `None` when nothing
 /// matches at that position.
-pub fn Dict::match_at(self : Dict, text : String, start : Int) -> Option[(Int, String)] {
+pub fn Dict::match_at(
+  self : Dict,
+  text : String,
+  start : Int,
+) -> (Int, String)? {
   let end = text.length()
   let mut best_len = 0
   let mut best_value = ""
   for entry in self.entries {
     let key = entry.0
     let key_len = key.length()
-    if key_len > best_len && start + key_len <= end && text[start:start + key_len] == key {
-      best_len = key_len
-      best_value = entry.1
+    if key_len > best_len {
+      if start + key_len <= end {
+        let candidate = text[start:start + key_len]
+        if candidate.equal_to_string(key) {
+          best_len = key_len
+          best_value = entry.1
+        }
+      }
     }
   }
   if best_len > 0 {
@@ -27,11 +37,16 @@ pub fn Dict::match_at(self : Dict, text : String, start : Int) -> Option[(Int, S
   }
 }
 
+///|
 /// Look up a position in a dictionary group, honouring its policy.
-pub fn DictGroup::lookup(self : DictGroup, text : String, start : Int) -> Option[(Int, String)] {
+pub fn DictGroup::lookup(
+  self : DictGroup,
+  text : String,
+  start : Int,
+) -> (Int, String)? {
   match self.policy {
     Union => {
-      let mut best : Option[(Int, String)] = None
+      let mut best : (Int, String)? = None
       for dict in self.dicts {
         match dict.match_at(text, start) {
           Some((len, value)) => {
@@ -49,7 +64,7 @@ pub fn DictGroup::lookup(self : DictGroup, text : String, start : Int) -> Option
       best
     }
     ShortCircuit => {
-      let mut found : Option[(Int, String)] = None
+      let mut found : (Int, String)? = None
       for dict in self.dicts {
         match found {
           Some(_) => ()
@@ -61,29 +76,32 @@ pub fn DictGroup::lookup(self : DictGroup, text : String, start : Int) -> Option
   }
 }
 
+///|
 /// Apply one pass over the whole text.
 ///
 /// Characters without a match are copied through unchanged, which is what keeps
 /// digits, punctuation, Latin letters and whitespace intact.
 pub fn DictGroup::apply(self : DictGroup, text : String) -> String {
   let end = text.length()
-  let mut out : String = ""
+  let out = StringBuilder()
   let mut cursor = 0
   while cursor < end {
     match self.lookup(text, cursor) {
       Some((len, value)) => {
-        out = out + value
+        out.write_string(value)
         cursor = cursor + len
       }
       None => {
-        out = out + text[cursor:cursor + 1]
+        // `write_substring` takes (start, length) — not an end offset.
+        out.write_substring(text, cursor, 1)
         cursor = cursor + 1
       }
     }
   }
-  out
+  out.to_string()
 }
 
+///|
 /// Apply every pass of a chain in order.
 ///
 /// Order is semantics, not an optimisation: OpenCC's `s2twp`, for example,

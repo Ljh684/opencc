@@ -6,10 +6,10 @@
 
 仓库：<https://github.com/Ljh684/opencc>
 
-> 状态：**开发中（WIP）**。已完成：仓库骨架与 Apache-2.0 许可、转换引擎的核心链路
-> （词典 → 最长匹配 → 转换链）、上游 OpenCC 数据快照（19 个词典 / 19 个配置 / 官方
-> golden 语料，含 revision 与逐文件校验和）。进行中：词典生成器与官方一致性测试，
-> 见下方[路线图](#路线图)。
+> 状态：**开发中（WIP）**。已完成：仓库骨架与 Apache-2.0 许可、上游 OpenCC 数据快照
+> （19 个词典 / 19 个配置 / 官方 golden 语料，含 revision 与逐文件校验和）、转换引擎的
+> 核心链路（词典 → 最长匹配 → 转换链，`moon check` 通过、4 个单元测试通过）。
+> 进行中：词典生成器与官方一致性测试，见下方[路线图](#路线图)。
 
 ---
 
@@ -107,7 +107,8 @@ pwsh -File scripts/fetch-opencc-data.ps1 -Revision <新 revision>
 
 ```powershell
 # 1. 安装 MoonBit 工具链（Windows）
-pwsh -c "irm https://cli.moonbitlang.com/install/win.ps1 | iex"
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+irm https://cli.moonbitlang.cn/install/powershell.ps1 | iex
 
 # 2. 安装 Git 并完成仓库初始化（写入本仓库的 user.name / user.email 并首次提交）
 winget install --id Git.Git -e
@@ -126,15 +127,18 @@ moon test
 ```
 moon.mod               模块清单
 data/opencc/           上游词典与配置快照（含 REVISION / SHA256SUMS）
-src/core/              词典、最长匹配、转换链（引擎核心）
-src/config/            19 个内置配置的定义
-src/data/              编译期词典数据模块（由 tools/gen_dict 产出）
+core/                  词典、最长匹配、转换链（引擎核心）
+config/                19 个内置配置的定义与其转换链
+dict/                  编译期词典数据模块（由 tools/gen_dict 产出）
 cmd/opencc/            CLI 入口
 tools/gen_dict/        词典 → MoonBit 数据 生成器
 scripts/               环境与数据准备的 PowerShell 脚本
 test/fixtures/golden/  OpenCC 官方一致性语料（验收基准）
 docs/                  设计文档与验收标准
 ```
+
+包布局遵循当前 `moon new` 模板：模块根目录本身就是源目录，`cmd/` 放可执行包，
+不再使用旧的 `src/` 约定。
 
 ## 路线图
 

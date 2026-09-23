@@ -13,7 +13,7 @@ jobs:
 
       - name: Install MoonBit toolchain
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          curl -fsSL https://cli.moonbitlang.cn/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
 
       - name: Toolchain version
@@ -33,22 +33,19 @@ jobs:
 
   golden:
     runs-on: ubuntu-latest
-    # Enabled once tools/gen_dict and the golden corpus land (W1/W3).
+    # Enabled once tools/gen_dict lands (W1); the data snapshot is committed, so
+    # this job needs no network beyond the toolchain install.
     if: false
     steps:
       - uses: actions/checkout@v4
 
       - name: Install MoonBit toolchain
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          curl -fsSL https://cli.moonbitlang.cn/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
 
       - name: Verify generated data is up to date
-        run: |
-          curl -fsSL "https://codeload.github.com/BYVoid/OpenCC/zip/master" -o opencc.zip
-          unzip -q opencc.zip -d vendor-src
-          mv vendor-src/OpenCC-* vendor/opencc
-          moon run tools/gen_dict -- --verify
+        run: moon run tools/gen_dict -- --verify
 
       - name: Official golden corpus
         run: moon run cmd/opencc -- verify --golden test/fixtures/golden

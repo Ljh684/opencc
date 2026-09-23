@@ -26,10 +26,10 @@ test/fixtures/golden/output/*.txt        一致性测试期望输出
 ## 输出
 
 ```
-src/data/<dict_name>.mbt     每个词典一个模块：排序后的 (key, value) 数组 + 元数据
-src/data/manifest.mbt        词典清单、来源 revision、每个文件的 SHA-256
-src/config/chain_data.mbt    由 config/*.json 转写出的转换链定义
-test/fixtures/golden/        从 vendor 复制的一致性语料（随仓库提交）
+dict/<dict_name>.mbt         每个词典一个模块：排序后的 (key, value) 数组 + 元数据
+dict/manifest.mbt            词典清单、来源 revision、每个文件的 SHA-256
+config/chain_data.mbt        由 config/*.json 转写出的转换链定义
+test/fixtures/golden/        抽取自 data/opencc 的一致性语料（随仓库提交）
 ```
 
 ## 约定的数据形状
@@ -44,7 +44,7 @@ test/fixtures/golden/        从 vendor 复制的一致性语料（随仓库提�
 
 ```powershell
 pwsh -File scripts/fetch-opencc-data.ps1
-moon run tools/gen_dict -- --input data/opencc --out src/data
+moon run tools/gen_dict -- --input data/opencc --out dict
 moon run tools/gen_dict -- --verify      # 只校验，不写文件；CI 用
 ```
 
@@ -53,5 +53,5 @@ moon run tools/gen_dict -- --verify      # 只校验，不写文件；CI 用
 
 ## 状态
 
-尚未实现（W1 任务）。当前仓库里的 `src/core` 是手写的最小转换引擎，用于先打通
+尚未实现（W1 任务）。当前仓库里的 `core/` 是手写的最小转换引擎，用于先打通
 「词典 → 最大匹配 → 转换链」这条链路，生成器接入后由它产出真实数据。
