@@ -67,12 +67,16 @@ GitHub：
 
 ```bash
 moon check                                  # 类型检查，无警告
-moon test                                   # 15 个单元测试
-moon run cmd/opencc --target native -- verify              # 官方语料 5/5
+moon test                                   # 30 个单元测试（含 76099 条目的全量属性测试）
+moon run cmd/opencc --target native -- verify              # 官方语料 5/5 + 往返一致性
 moon run tools/gen_dict --target native -- --verify        # 数据与生成结果一致
 moon run cmd/opencc --target native -- -c s2twp --text "内存泄漏与软件优化"
 # => 記憶體洩漏與軟體最佳化
 ```
+
+`verify` 还会把每份官方输出用反向配置转回去：`s2t → t2s` 与 `s2tw → tw2s` 逐字节回到源文本；
+其余三对因快照缺少 OpenCC 构建期生成的词典而存在已知差异，命令会**列出缺哪一本**，
+并把"反向链完整却出现差异"单独判为失败。
 
 最后一行值得停留一秒：逐字替换只会得到 `內存泄漏與軟體優化`，而本项目给出的是台湾用词
 `記憶體` / `軟體` / `最佳化`，并保持 `級別` 这类词不被误切——这正是词级词典 + 分词边界

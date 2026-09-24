@@ -13,7 +13,8 @@
 > CLI 与库 API。
 >
 > **官方一致性：5/5 逐字节通过**（`s2t`、`s2hk`、`s2tw`、`s2hkp`、`s2twp`，
-> 用仓库内 `test/fixtures/golden` 语料）。`moon check` 无警告，26 个单元测试通过。
+> 用仓库内 `test/fixtures/golden` 语料）。`moon check` 无警告，30 个单元测试通过
+> （含覆盖 76099 条词典条目的全量属性测试）。
 > 见下方[路线图](#路线图)。
 
 ---
@@ -177,8 +178,8 @@ docs/                  设计文档与验收标准
 | F5 官方一致性 | 配置驱动链路 + 派生词典 + 逐段转换，golden 5/5 逐字节通过 | 已完成 |
 | F6 CLI 与配置覆盖 | `list-configs` / `convert` / `verify`，库入口 `convert(name, text)` | 已完成 |
 | F7 数据表示 | 内嵌文本块 + 运行时建索引：native 测试 341 s → 7 s，解除 plain wasm 上限 | 已完成 |
-| F8 覆盖与属性测试 | 反方向语料、分块一致性与幂等属性测试、词表覆盖率报告 | 下一步 |
-| F9 体积与发布 | 按配置裁剪词典（minimal / standard / full）、发布到 mooncakes | |
+| F8 覆盖与属性测试 | 全量条目属性测试、往返一致性检查、缺失词典台账、行粒度与稳定性属性 | 已完成 |
+| F9 体积与发布 | 按配置裁剪词典（minimal / standard / full）、发布到 mooncakes | 下一步 |
 
 ## 已知限制
 

@@ -96,6 +96,91 @@ fn window(text : String, offset : Int) -> String {
 }
 
 ///|
+/// How many code units differ between two strings.
+fn count_differences(left : String, right : String) -> Int {
+  let limit = if left.length() < right.length() {
+    left.length()
+  } else {
+    right.length()
+  }
+  let mut index = 0
+  let mut differences = 0
+  while index < limit {
+    if left.unsafe_get(index) != right.unsafe_get(index) {
+      differences = differences + 1
+    }
+    index = index + 1
+  }
+  differences +
+  (if left.length() > right.length() {
+    left.length() - right.length()
+  } else {
+    right.length() - left.length()
+  })
+}
+
+///|
+/// Convert each golden output back with its reverse configuration.
+///
+/// Round-tripping is only claimed where the reverse chain is complete: when the
+/// snapshot is missing a dictionary that OpenCC generates during its own build,
+/// the pair is reported as a note instead of a failure. A difference with a
+/// complete chain is a genuine regression.
+///
+/// Returns the number of failures.
+fn verify_round_trips(dir : String, source : String) -> Int {
+  let pairs = [
+    ("s2t", "t2s"),
+    ("s2tw", "tw2s"),
+    ("s2twp", "tw2sp"),
+    ("s2hk", "hk2s"),
+    ("s2hkp", "hk2sp"),
+  ]
+  let mut failures = 0
+  for pair in pairs {
+    let forward = pair.0
+    let backward = pair.1
+    let path = dir + "/output/us_constitution_zhs." + forward + ".txt"
+    if !@fs.path_exists(path) {
+      continue
+    }
+    match @config.chain(backward) {
+      None => ()
+      Some(chain) => {
+        let back = chain.apply(read_text(path))
+        let name = forward + " -> " + backward
+        if back == source {
+          println("  ok   " + name + "  identical to the source text")
+        } else {
+          let missing = @config.missing_dictionaries(backward)
+          let differences = count_differences(back, source)
+          if missing.is_empty() {
+            failures = failures + 1
+            println(
+              "  FAIL " +
+              name +
+              "  " +
+              differences.to_string() +
+              " differing code units, but the reverse chain is complete",
+            )
+          } else {
+            println(
+              "  note " +
+              name +
+              "  " +
+              differences.to_string() +
+              " differing code units; missing: " +
+              missing.join(", "),
+            )
+          }
+        }
+      }
+    }
+  }
+  failures
+}
+
+///|
 /// `us_constitution_zhs.s2t.txt` -> `Some("s2t")`.
 ///
 /// Returns `None` for variants this project does not cover yet, such as the
@@ -249,7 +334,8 @@ fn verify_golden(dir : String) -> Int {
     skipped.to_string() +
     " skipped (unsupported variants)",
   )
-  failed
+  println("round-trip    :")
+  failed + verify_round_trips(dir, input)
 }
 
 ///|
