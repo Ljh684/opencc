@@ -69,21 +69,40 @@ MoonBit 生态目前已经具备中文分词的移植、拼音、中文数字等
 - 暂不覆盖 OpenCC 的 `staging/` 实验字典与 `jieba` 分词变体配置。
 - 不提供 GUI。
 
-## 使用（计划中的接口）
+## 使用
 
 ```bash
-# CLI
-opencc --config s2twp input.txt -o output.txt
-cat in.txt | opencc -c t2s
+# 列出全部 19 个配置（会标出引用但快照未提供的词典）
 opencc list-configs
+
+# 文本 / 文件转换；不给 -o 时结果写到 stdout
+opencc -c s2twp --text "内存泄漏与软件优化"        # => 記憶體洩漏與軟體最佳化
+opencc convert -c s2t --input in.txt --output out.txt
+
+# 与 OpenCC 官方语料逐字节比对
 opencc verify --golden test/fixtures/golden
 ```
 
 ```moonbit
-// 库
+// 库：一次转换
+let out = @opencc.convert("s2twp", "内存泄漏与软件优化")
+
+// 库：复用链（构建词典索引一次，多次转换）
 let chain = @opencc.chain("s2twp")
-let out = chain.apply("内存泄漏与软件优化")
 ```
+
+## 与现有方案的区别
+
+- **生态里没有替代品**：mooncakes 2648 个包中，`opencc`、`简繁`、`简体`、`繁体`、
+  `traditional chinese`、`s2t`、`t2s` 的命中数**全部为 0**；已有的是分词（jieba、moonnlp）、
+  拼音、中文数字，都不做字形与地区用词转换。
+- **与 OpenCC 语义一致且可验证**：官方 golden 语料 5/5 逐字节通过，CLI 文件输出与期望文件
+  逐字节相同；而 OpenCC 是 C++ + 运行时二进制词典，本项目是纯 MoonBit、零 FFI、数据编译期
+  内联，可编到 wasm / js / native。
+- **数据可审计**：上游 revision、逐文件 SHA-256、`gen_dict --verify` 幂等校验，
+  连 OpenCC 构建期生成的派生词典都按上游规则复刻并留下可读文本。
+
+完整对比（含审阅者三分钟验证清单）见 [docs/comparison.md](docs/comparison.md)。
 
 ## 数据来源与许可
 
@@ -161,9 +180,15 @@ docs/                  设计文档与验收标准
 
 ## 已知限制
 
-- 当前引擎按 UTF-16 码元切分字符串。CJK 兼容汉字（U+2F800 区）属于增补平面，
-  需要按码点归并处理；归一化步骤会在 W1 与词典管线一起落地。
-- 初始化阶段的词典是内存中的线性查找，W1 引入排序数组 + 二分 / 前缀索引后替换。
+- 引擎按 UTF-16 码元切分与比较字符串；因为词典 key 与文本走同一套码元比较，匹配是一致的，
+  增补平面字符（如 CJK 兼容汉字）由归一化词典映射到规范字形后参与匹配。
+- CLI 还不支持标准输入：MoonBit 的 core 与 `moonbitlang/x` 目前没有标准输入 API，
+  加 FFI 会破坏「零 FFI」，因此先用文件与 `--text`；stdout 输出在以换行结尾的文本上
+  与输入等价，否则会补一个换行（`-o` 输出文件是逐字节精确的路径）。
+- **plain wasm 后端的测试二进制** 会因数据量触发后端的局部变量上限（库本身可构建）；
+  wasm-gc / native / js 正常，因此模块的首选后端是 wasm-gc。后续把词典表示改为分块字符串
+  再在运行时建索引，可同时解决这条限制与 native 构建慢的问题（见
+  [docs/performance.md](docs/performance.md)）。
 
 ## 许可证
 

@@ -59,6 +59,18 @@ pub fn chain(name : String) -> @core.Chain? {
 }
 
 ///|
+/// Convert `text` with a configuration.
+///
+/// Returns `None` when the configuration name is unknown, so callers can tell
+/// "no such configuration" apart from an empty result.
+pub fn convert(name : String, text : String) -> String? {
+  match chain(name) {
+    Some(chain) => Some(chain.apply(text))
+    None => None
+  }
+}
+
+///|
 /// Build every pass of a list, skipping those the snapshot cannot resolve.
 fn build_all(specs : Array[Spec]) -> Array[@core.Node] {
   let nodes : Array[@core.Node] = []

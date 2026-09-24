@@ -1,8 +1,9 @@
-// The 19 conversion configurations shipped by OpenCC.
+// Human-facing descriptors of the 19 conversion configurations.
 //
-// Only the descriptors live here for now; the conversion chains themselves are
-// transcribed from OpenCC's data/config/*.json by tools/gen_dict (W1), so that
-// the definitions stay traceable to an upstream revision.
+// The machine-readable part — normalization, segmentation and the conversion
+// chain — lives in the generated chains.mbt, which tools/gen_dict produces from
+// the pinned OpenCC snapshot. This file only carries the Chinese descriptions
+// used by the CLI listing, so the two cannot drift apart in behaviour.
 
 ///|
 /// A conversion configuration offered by the CLI.

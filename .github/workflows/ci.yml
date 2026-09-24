@@ -23,7 +23,10 @@ jobs:
         run: moon check
 
       - name: Unit tests
-        run: moon test
+        # wasm-gc is the module's preferred target; the plain wasm test binary
+        # exceeds the backend's local limit with the full data set (see
+        # docs/performance.md).
+        run: moon test --target wasm-gc
 
       - name: Build all targets
         run: |

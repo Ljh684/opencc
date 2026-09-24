@@ -14,6 +14,11 @@ repository = "https://github.com/Ljh684/opencc"
 
 license = "Apache-2.0"
 
+// wasm-gc is the backend MoonBit recommends, and the one that compiles the whole
+// data set comfortably; see the known limitations in README.md.
+
+preferred_target = "wasm-gc"
+
 keywords = [
   "opencc",
   "chinese",

@@ -38,3 +38,31 @@ moon run tools/bench_lookup --target native
 - 最坏情况是命中大组（如首字为高频字的 653 条），此时单次查找仍要扫描该组；
   真正的上界要等 F5 打通官方语料后，用全量文本统计峰值。
 - 目前的数字只覆盖 `s2t-lite`，未包含归一化与台湾/香港用词链路。
+
+## 构建耗时（同一台机器，2026-09-25）
+
+生成的数据是"每个词典一个数组常量"，条目多，编译器要处理的语句也多：
+
+| 动作 | 耗时 |
+| --- | --- |
+| `moon build --target wasm-gc`（库） | 约 6 s |
+| `moon test --target wasm-gc` | 3.4 s（21 个测试） |
+| `moon test --target js` | 1.9 s（需要 PATH 上有 node） |
+| `moon test --target native` | **341 s** |
+| `moon run cmd/opencc --target native` 首次 | 约 3 min（native 链接） |
+
+结论：native 链路是当前的瓶颈，根因是逐条字面量造成巨大的编译/链接单元。
+列为后续改造项（F8）：把词典表示改为"分块的字符串块 + 运行时一次扫描建立索引"，
+预期同时解决下面这条限制并显著缩短 native 构建时间。
+
+## 后端限制（实测）
+
+| 后端 | 库构建 | 测试 |
+| --- | --- | --- |
+| wasm-gc | 通过 | 21/21 通过 |
+| native | 通过 | 21/21 通过（慢） |
+| js | 通过 | 需要 node 在 PATH（本机未装） |
+| wasm（非 gc） | 通过 | **测试二进制编译失败**：`local count` 超出后端上限 |
+
+因此 `moon.mod` 把 `preferred_target` 设为 `wasm-gc`，CI 也用 wasm-gc 跑测试。
+这是数据规模带来的真实边界，写在这里而不是留待评审发现。
