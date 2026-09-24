@@ -1,6 +1,9 @@
 import {
+  "Ljh684/opencc/core",
   "moonbitlang/core/env",
+  "moonbitlang/core/json",
   "moonbitlang/x/crypto",
+  "moonbitlang/x/encoding",
   "moonbitlang/x/fs",
   "moonbitlang/x/sys",
 }

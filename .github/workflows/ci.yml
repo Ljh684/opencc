@@ -33,9 +33,6 @@ jobs:
 
   golden:
     runs-on: ubuntu-latest
-    # Enabled once tools/gen_dict lands (W1); the data snapshot is committed, so
-    # this job needs no network beyond the toolchain install.
-    if: false
     steps:
       - uses: actions/checkout@v4
 

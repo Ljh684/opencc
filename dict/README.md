@@ -8,8 +8,9 @@ dict/manifest.mbt           词典清单、上游 revision、每个文件的 SHA
 dict/moon.pkg               生成的包配置（含 formatter.ignore）
 ```
 
-当前快照：19 个词典、75543 条目、约 2.1 MB 生成源码；最大的是 `st_phrases.mbt`
-（49238 条，13 个分片）。
+当前快照：**20 个词典、76099 条目**（含一个派生词典
+`st_phrases_generated_from_regional_phrases`，由 `data/derived/` 生成），
+约 2.1 MB 生成源码；最大的是 `st_phrases.mbt`（49238 条，13 个分片）。
 
 生成步骤：
 

@@ -36,17 +36,14 @@ pub fn Dict::match_at(
 }
 
 ///|
-/// Look up a position in a dictionary group, honouring its policy.
-pub fn DictGroup::lookup(
-  self : DictGroup,
-  text : String,
-  start : Int,
-) -> (Int, String)? {
-  match self.policy {
-    Union => {
+/// Longest match of `text` starting at `start` according to a pass node.
+pub fn Node::lookup(self : Node, text : String, start : Int) -> (Int, String)? {
+  match self {
+    Leaf(dict) => dict.match_at(text, start)
+    Group(Union, children) => {
       let mut best : (Int, String)? = None
-      for dict in self.dicts {
-        match dict.match_at(text, start) {
+      for child in children {
+        match child.lookup(text, start) {
           Some((len, value)) => {
             let take = match best {
               Some((best_len, _)) => len > best_len
@@ -61,12 +58,12 @@ pub fn DictGroup::lookup(
       }
       best
     }
-    ShortCircuit => {
+    Group(ShortCircuit, children) => {
       let mut found : (Int, String)? = None
-      for dict in self.dicts {
+      for child in children {
         match found {
           Some(_) => ()
-          None => found = dict.match_at(text, start)
+          None => found = child.lookup(text, start)
         }
       }
       found
@@ -79,7 +76,7 @@ pub fn DictGroup::lookup(
 ///
 /// Characters without a match are copied through unchanged, which is what keeps
 /// digits, punctuation, Latin letters and whitespace intact.
-pub fn DictGroup::apply(self : DictGroup, text : String) -> String {
+pub fn Node::apply(self : Node, text : String) -> String {
   let end = text.length()
   let out = StringBuilder()
   let mut cursor = 0
@@ -100,14 +97,72 @@ pub fn DictGroup::apply(self : DictGroup, text : String) -> String {
 }
 
 ///|
-/// Apply every pass of a chain in order.
+/// Apply every pass of a chain to one span, in order.
 ///
-/// Order is semantics, not an optimisation: OpenCC's `s2twp`, for example,
-/// converts phrases before characters and applies the Taiwan wording pass last.
-pub fn Chain::apply(self : Chain, text : String) -> String {
+/// Order is semantics, not an optimisation: `s2twp`, for example, converts
+/// phrases before characters and applies the Taiwan wording pass last.
+fn Chain::convert_all(self : Chain, text : String) -> String {
   let mut current = text
-  for group in self.groups {
-    current = group.apply(current)
+  for pass in self.conversion {
+    current = pass.apply(current)
   }
   current
+}
+
+///|
+/// Split `text` into spans, using a segmentation dictionary.
+///
+/// This mirrors OpenCC's `MaxMatchSegmentation`: a dictionary match becomes its
+/// own span, and the characters between matches accumulate into one span.
+fn segment(text : String, dict : Node) -> Array[(Int, Int)] {
+  let spans : Array[(Int, Int)] = []
+  let end = text.length()
+  let mut cursor = 0
+  let mut run_start = 0
+  let mut run_length = 0
+  while cursor < end {
+    match dict.lookup(text, cursor) {
+      Some((length, _)) => {
+        if run_length > 0 {
+          spans.push((run_start, run_length))
+          run_length = 0
+        }
+        spans.push((cursor, length))
+        cursor = cursor + length
+        run_start = cursor
+      }
+      None => {
+        if run_length == 0 {
+          run_start = cursor
+        }
+        run_length = run_length + 1
+        cursor = cursor + 1
+      }
+    }
+  }
+  if run_length > 0 {
+    spans.push((run_start, run_length))
+  }
+  spans
+}
+
+///|
+/// Convert a text: normalise, segment, then run the conversion chain per span.
+pub fn Chain::apply(self : Chain, text : String) -> String {
+  let mut normalized = text
+  for pass in self.normalization {
+    normalized = pass.apply(normalized)
+  }
+  match self.segmentation {
+    None => self.convert_all(normalized)
+    Some(dict) => {
+      let out = StringBuilder()
+      for span in segment(normalized, dict) {
+        out.write_string(
+          self.convert_all(normalized[span.0:span.0 + span.1].to_owned()),
+        )
+      }
+      out.to_string()
+    }
+  }
 }

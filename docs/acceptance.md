@@ -17,11 +17,28 @@
 | --- | --- | --- |
 | 数据可审计 | 上游快照带 revision 与逐文件 SHA-256，生成前校验 | `data/opencc/REVISION`、`data/opencc/SHA256SUMS` |
 | 生成代码可复现 | `tools/gen_dict --verify` 在生成结果与仓库不符时退出码 1 | `moon run tools/gen_dict -- --verify` |
-| OpenCC 官方 golden 一致性 | 100% 逐字节通过（10 份期望输出，覆盖 5 条链） | `opencc verify` 报告 + CI 记录 |
+| OpenCC 官方 golden 一致性 | 100% 逐字节通过（5 条链各 1 份期望输出） | `moon run cmd/opencc -- verify` |
 | 反方向覆盖（t2s / tw2s / hk2s） | 自建语料 + 词表覆盖率报告 | `reports/coverage.json` |
 | 属性测试 | 分块一致性、非中文不变、幂等性 | `moon test` 中的属性用例 |
 | wasm 产物体积 | 公开各配置的 minimal / standard 体积对比 | README 表格 |
-| 性能 | 吞吐（MB/s）记录，与 OpenCC 参考实现对照 | `reports/benchmark.md` |
+| 性能 | 吞吐记录，与 OpenCC 参考实现对照 | [performance.md](performance.md) |
+
+## 官方语料实测（2026-09-25）
+
+```
+$ moon run cmd/opencc --target native -- verify
+golden input : test/fixtures/golden/input/us_constitution_zhs.txt (7735 code units)
+  ok   s2t
+  ok   s2hk
+  ok   s2tw
+  ok   s2hkp
+  ok   s2twp
+golden result: 5 passed, 0 failed, 5 skipped (unsupported variants)
+```
+
+5 条链逐字节一致；跳过的是 `*_jieba` 变体（分词器差异，见 design 的非目标）。
+另外 19 个配置里凡引用快照未提供词典的，`gen_dict` 会在生成的 ChainSpec 里列出
+`missing`，CLI 也会在报告里标出——不隐藏差异。
 
 ## 查重记录（2026-09-24）
 

@@ -82,8 +82,11 @@ fn main {
     (total / buckets).to_string(),
   )
 
-  let group = @core.DictGroup::new(@core.ShortCircuit, [phrases, characters])
-  let chain = @core.Chain::from_groups("s2t-lite", [group])
+  let pass = @core.Node::group(@core.ShortCircuit, [
+    @core.Node::leaf(phrases),
+    @core.Node::leaf(characters),
+  ])
+  let chain = @core.Chain::new("s2t-lite", [], None, [pass])
 
   // Grow the batch until the clock is meaningful: `now()` has millisecond
   // resolution, so a single pass over a small document would read as 0 ms.

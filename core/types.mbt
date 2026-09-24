@@ -1,8 +1,9 @@
 // Shared types for the conversion engine.
 //
 // The shape mirrors OpenCC's model: a conversion configuration is a sequence of
-// passes ("conversion_chain"), every pass consults a group of dictionaries, and
-// a group is either union or short_circuit.
+// passes (`normalization` followed by `conversion_chain`), and every pass is a
+// tree of dictionary groups. Grouping nests, so a pass can express things like
+// `short_circuit(union(phrases, regional_phrases), characters)`.
 
 ///|
 /// A dictionary, indexed by the first UTF-16 code unit of every key.
@@ -18,26 +19,34 @@ pub struct Dict {
 }
 
 ///|
-/// How the dictionaries of a group are consulted.
+/// How the children of a group are consulted.
 pub(all) enum GroupPolicy {
-  /// Consider every dictionary and keep the longest match.
+  /// Consider every child and keep the longest match.
   Union
-  /// Use the first dictionary that matches.
+  /// Use the first child that matches.
   ShortCircuit
 }
 
 ///|
-/// One conversion pass: a group of dictionaries plus its lookup policy.
-pub struct DictGroup {
-  policy : GroupPolicy
-  dicts : Array[Dict]
+/// One node of a conversion pass: either a dictionary or a group of nodes.
+pub(all) enum Node {
+  Leaf(Dict)
+  Group(GroupPolicy, Array[Node])
 }
 
 ///|
-/// A full conversion configuration: passes applied in order, first to last.
+/// A conversion configuration.
+///
+/// `normalization` runs over the whole text first, `segmentation` decides the
+/// spans that may be converted independently, and `conversion` holds the passes
+/// applied to each span in order. Keeping the three apart matters: a phrase
+/// match must not straddle a segment boundary, which is exactly how OpenCC's
+/// `较低级别` stays `較低級別` instead of becoming `較低階別`.
 pub struct Chain {
   name : String
-  groups : Array[DictGroup]
+  normalization : Array[Node]
+  segmentation : Node?
+  conversion : Array[Node]
 }
 
 ///|
@@ -83,13 +92,24 @@ pub fn Dict::size(self : Dict) -> Int {
 }
 
 ///|
-/// Build a dictionary group.
-pub fn DictGroup::new(policy : GroupPolicy, dicts : Array[Dict]) -> DictGroup {
-  { policy, dicts, }
+/// A pass made of a single dictionary.
+pub fn Node::leaf(dict : Dict) -> Node {
+  Leaf(dict)
+}
+
+///|
+/// A pass made of a group of nodes.
+pub fn Node::group(policy : GroupPolicy, children : Array[Node]) -> Node {
+  Group(policy, children)
 }
 
 ///|
 /// Build a chain from its passes.
-pub fn Chain::from_groups(name : String, groups : Array[DictGroup]) -> Chain {
-  { name, groups, }
+pub fn Chain::new(
+  name : String,
+  normalization : Array[Node],
+  segmentation : Node?,
+  conversion : Array[Node],
+) -> Chain {
+  { name, normalization, segmentation, conversion, }
 }

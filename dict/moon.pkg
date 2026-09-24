@@ -21,5 +21,6 @@ formatter(
     "tw_variants.mbt",
     "tw_variants_phrases.mbt",
     "tw_variants_rev_phrases.mbt",
+    "st_phrases_generated_from_regional_phrases.mbt",
   ],
 )
