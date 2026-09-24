@@ -25,12 +25,16 @@ data/opencc/REVISION             上游仓库、revision、归档哈希
 ## 输出
 
 ```
-dict/<binding>.mbt               每个词典一个模块；大词典按 4096 条分片
+dict/<binding>.mbt               每个词典一个模块：内嵌词典文本（每 4000 行一个字符串块）
 dict/manifest.mbt                词典清单、上游 revision、逐文件 SHA-256、lookup()
 dict/moon.pkg                    生成的包配置（含 formatter.ignore）
 config/chains.mbt                19 个配置的三段式定义（normalization / segmentation / conversion）
 data/derived/*.txt               派生词典的可审计文本
 ```
+
+词典以 `#|` 原样字符串内嵌，内容与上游 `.txt` 逐字节相同；运行期由 `core/Dict::parse`
+建立索引。这样编译器只需要处理每词典若干个大常量，而不是 7.6 万条字面量——
+实测 native 测试从 341 s 降到 7 s，并解除了 plain wasm 后端的局部变量上限。
 
 ## 生成规则
 

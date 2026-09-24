@@ -84,6 +84,30 @@ OpenCC 的一次转换由三部分组成（以 `s2twp` 为例）：
 词组优先于单字由 `short_circuit` 的顺序保证，而不是靠「更长的 key 优先」这一条规则
 单独完成。实测组大小与吞吐见 [performance.md](performance.md)。
 
+### 数据的表示
+
+生成的 `dict/*.mbt` 不再逐条列出 `(key, value)`，而是**内嵌词典自身的文本**：
+
+```moonbit
+let st_characters_chunk_0 : String =
+  #|㐷	傌
+  #|㐹	㑶 㐹
+
+pub let st_characters : Array[String] = [st_characters_chunk_0]
+```
+
+运行期由 `core/Dict::parse` 扫描一次建立首字索引。这样做的原因：
+
+1. **编译代价**：7.6 万条目逐条字面量会让 native 编译器生成巨大单元（实测 `moon test
+   --target native` 341 s），改成一个词典一个字符串块后降到 7 s。
+2. **后端上限**：plain wasm 后端对单个函数的局部变量数量有上限，逐条字面量会直接编译失败；
+   文本块形式四个后端都能通过。
+3. **可审计**：内嵌文本与 `data/opencc/dictionary/*.txt` 逐字节相同，哈希记录在
+   `dict/manifest.mbt`；要核对数据是否被改动，不需要读生成代码的语法，只要比对文本。
+
+代价是启动时多一次扫描（约 16 ms / 20 个词典），以及 `#|` 原样字符串会吃掉每行一个前导空格，
+因此生成器拒绝任何以空格开头的数据行（当前快照没有这种行）。
+
 ### 派生词典
 
 OpenCC 有几个词典是它自己在构建期生成的。本项目复刻了其中的

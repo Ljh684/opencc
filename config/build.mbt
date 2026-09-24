@@ -89,8 +89,8 @@ fn build(spec : Spec) -> @core.Node? {
   match spec {
     Leaf(binding) =>
       match @dict.lookup(binding) {
-        Some(entries) =>
-          Some(@core.Node::leaf(@core.Dict::new(binding, entries)))
+        Some(chunks) =>
+          Some(@core.Node::leaf(@core.Dict::parse(binding, chunks)))
         None => None
       }
     Group(policy, children) => {

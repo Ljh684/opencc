@@ -48,8 +48,8 @@ fn main {
   )
 
   let build_start = @env.now()
-  let phrases = @core.Dict::new("STPhrases", @dict.st_phrases)
-  let characters = @core.Dict::new("STCharacters", @dict.st_characters)
+  let phrases = @core.Dict::parse("STPhrases", @dict.st_phrases)
+  let characters = @core.Dict::parse("STCharacters", @dict.st_characters)
   let build_ms = @env.now() - build_start
   println(
     "index build  : " +

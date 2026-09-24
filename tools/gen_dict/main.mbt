@@ -300,7 +300,8 @@ fn main {
       }
     }
 
-    let parsed = parse_dictionary(read_text(path))
+    let text = read_text(path)
+    let parsed = parse_dictionary(text)
     if parsed.skipped > 0 {
       println(
         "gen_dict: " +
@@ -310,6 +311,15 @@ fn main {
         " unparsable line(s)",
       )
       problems = problems + 1
+    }
+    // The embed uses `#|` raw strings, which drop one leading space per line, so
+    // data with leading spaces cannot be represented and must not be shipped.
+    for line in lines_of(text) {
+      if line.has_prefix(" ") {
+        println("gen_dict: " + file + " has a line starting with a space")
+        problems = problems + 1
+        break
+      }
     }
 
     let binding = module_name(file)
@@ -323,11 +333,7 @@ fn main {
     problems = problems +
       sync_file(
         out_dir + "/" + binding + ".mbt",
-        emit_dictionary(
-          binding,
-          "data/opencc/dictionary/" + file,
-          parsed.entries,
-        ),
+        emit_dictionary(binding, "data/opencc/dictionary/" + file, text),
         verify,
       )
     rows.push(
@@ -374,20 +380,12 @@ fn main {
     }
     problems = problems +
       sync_file(derived_dir + "/" + derived_file, text, verify)
-    let entries : Array[Entry] = []
-    for pair in derived {
-      entries.push({ key: pair.0, values: [pair.1], })
-    }
     bindings.push(derived_binding)
-    total_entries = total_entries + entries.length()
+    total_entries = total_entries + derived.length()
     problems = problems +
       sync_file(
         out_dir + "/" + derived_binding + ".mbt",
-        emit_dictionary(
-          derived_binding,
-          derived_dir + "/" + derived_file,
-          entries,
-        ),
+        emit_dictionary(derived_binding, derived_dir + "/" + derived_file, text),
         verify,
       )
     rows.push(
@@ -396,7 +394,7 @@ fn main {
       "\", file: \"derived/" +
       derived_file +
       "\", entries: " +
-      entries.length().to_string() +
+      derived.length().to_string() +
       ", sha256: \"" +
       sha256_of_text(text) +
       "\", derived: true },\n",

@@ -49,7 +49,7 @@ pub let sources : Array[DictSource] = [
 /// Generated from the snapshot: unknown names return `None` instead of
 /// failing, so a configuration that references a dictionary this snapshot
 /// does not ship degrades to "that pass is skipped".
-pub fn lookup(binding : String) -> Array[(String, String)]? {
+pub fn lookup(binding : String) -> Array[String]? {
   match binding {
     "cjk_compatibility_ideographs" => Some(cjk_compatibility_ideographs)
     "hk_phrases" => Some(hk_phrases)

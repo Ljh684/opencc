@@ -14,8 +14,8 @@ repository = "https://github.com/Ljh684/opencc"
 
 license = "Apache-2.0"
 
-// wasm-gc is the backend MoonBit recommends, and the one that compiles the whole
-// data set comfortably; see the known limitations in README.md.
+// wasm-gc is the backend MoonBit recommends. All four backends build; this only
+// decides what `moon build` / `moon test` use when no --target is given.
 
 preferred_target = "wasm-gc"
 

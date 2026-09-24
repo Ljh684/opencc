@@ -41,6 +41,19 @@ golden result: 5 passed, 0 failed, 5 skipped (unsupported variants)
 另外 19 个配置里凡引用快照未提供词典的，`gen_dict` 会在生成的 ChainSpec 里列出
 `missing`，CLI 也会在报告里标出——不隐藏差异。
 
+## 工程指标实测（2026-09-25，数据表示改造后）
+
+| 指标 | 数值 |
+| --- | --- |
+| 单元测试 | 26 个；四个后端（wasm / wasm-gc / js / native）全部通过 |
+| 测试耗时 | wasm-gc 0.8 s，plain wasm 1.6 s，native 7 s |
+| `opencc verify`（native，含首次构建） | 3.4 s |
+| 生成数据体积 | 1.68 MB（20 个词典 / 76099 条目） |
+| CLI 产物 | wasm-gc 1.31 MB / js 1.66 MB / native 1.54 MB |
+
+改造前后对比（同一台机器）：native 测试 341 s → 7 s，plain wasm 由"编译失败"
+变为通过。详见 [performance.md](performance.md)。
+
 ## 查重记录（2026-09-24）
 
 在 mooncakes.io 全量包清单（2634 个包）与 GitHub MoonBit 仓库（topic:moonbit，341 个）中检索：

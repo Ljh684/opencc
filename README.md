@@ -8,11 +8,12 @@
 
 > 状态：**开发中（WIP）**。已完成：仓库骨架与 Apache-2.0 许可、上游 OpenCC 数据快照
 > （19 个词典 / 19 个配置 / 官方 golden 语料）、转换引擎（首字索引、嵌套词典组、归一化 →
-> 分词 → 逐段转换）、词典生成器（`tools/gen_dict`：编译 20 个词典共 76099 条数据、
-> 复刻 OpenCC 构建期派生词典、SHA-256 校验与 `--verify` 幂等检查）。
+> 分词 → 逐段转换）、词典生成器（`tools/gen_dict`：把 20 个词典共 76099 条数据编译成
+> 内嵌文本块、复刻 OpenCC 构建期派生词典、SHA-256 校验与 `--verify` 幂等检查）、
+> CLI 与库 API。
 >
 > **官方一致性：5/5 逐字节通过**（`s2t`、`s2hk`、`s2tw`、`s2hkp`、`s2twp`，
-> 用仓库内 `test/fixtures/golden` 语料）。`moon check` 无警告，15 个单元测试通过。
+> 用仓库内 `test/fixtures/golden` 语料）。`moon check` 无警告，26 个单元测试通过。
 > 见下方[路线图](#路线图)。
 
 ---
@@ -174,9 +175,10 @@ docs/                  设计文档与验收标准
 | F3 词典生成器 | 词典 → `dict/*.mbt` + manifest，`--verify` 幂等 | 已完成 |
 | F4 索引 | 首字索引替换线性扫描，性能记录入库 | 已完成 |
 | F5 官方一致性 | 配置驱动链路 + 派生词典 + 逐段转换，golden 5/5 逐字节通过 | 已完成 |
-| F6 CLI 与配置覆盖 | 文件 / 流式转换、`-c <config>`、19 配置端到端可用 | 下一步 |
-| F7 覆盖与属性测试 | 反方向语料、前缀 / 后缀覆盖、分块一致性与幂等属性测试 | |
-| F8 体积与发布 | 各配置产物体积报告、多后端 CI、发布到 mooncakes | |
+| F6 CLI 与配置覆盖 | `list-configs` / `convert` / `verify`，库入口 `convert(name, text)` | 已完成 |
+| F7 数据表示 | 内嵌文本块 + 运行时建索引：native 测试 341 s → 7 s，解除 plain wasm 上限 | 已完成 |
+| F8 覆盖与属性测试 | 反方向语料、分块一致性与幂等属性测试、词表覆盖率报告 | 下一步 |
+| F9 体积与发布 | 按配置裁剪词典（minimal / standard / full）、发布到 mooncakes | |
 
 ## 已知限制
 
@@ -185,10 +187,10 @@ docs/                  设计文档与验收标准
 - CLI 还不支持标准输入：MoonBit 的 core 与 `moonbitlang/x` 目前没有标准输入 API，
   加 FFI 会破坏「零 FFI」，因此先用文件与 `--text`；stdout 输出在以换行结尾的文本上
   与输入等价，否则会补一个换行（`-o` 输出文件是逐字节精确的路径）。
-- **plain wasm 后端的测试二进制** 会因数据量触发后端的局部变量上限（库本身可构建）；
-  wasm-gc / native / js 正常，因此模块的首选后端是 wasm-gc。后续把词典表示改为分块字符串
-  再在运行时建索引，可同时解决这条限制与 native 构建慢的问题（见
-  [docs/performance.md](docs/performance.md)）。
+- 生成的 CLI 产物包含全部 20 个词典（wasm-gc 1.31 MB / js 1.66 MB / native 1.54 MB）；
+  按配置裁剪词典的体积优化列为后续项（见 [docs/performance.md](docs/performance.md)）。
+- 反方向配置（`t2s`、`tw2s`、`hk2s`）缺少官方语料可对标，目前只有正向 5 条链的
+  逐字节证据；覆盖与属性测试是下一步。
 
 ## 许可证
 

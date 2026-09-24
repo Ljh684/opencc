@@ -35,7 +35,8 @@ fn node_of(
   match spec {
     Leaf(binding) =>
       match data.get(binding) {
-        Some(pairs) => Some(@core.Node::leaf(@core.Dict::new(binding, pairs)))
+        Some(pairs) =>
+          Some(@core.Node::leaf(@core.Dict::of_pairs(binding, pairs)))
         None => None
       }
     Group(policy, children) => {

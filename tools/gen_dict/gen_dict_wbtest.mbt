@@ -1,4 +1,4 @@
-// Tests for the pure parts of the generator: parsing and name derivation.
+// Tests for the pure parts of the generator: parsing, naming and emission.
 
 ///|
 test "parse skips comments and blank lines" {
@@ -39,8 +39,32 @@ test "module names are derived from file names" {
 }
 
 ///|
-test "emitted literals escape quotes and backslashes" {
-  let entries : Array[Entry] = [{ key: "a\"b", values: ["c\\d"], }]
-  let source = emit_dictionary("sample", "Sample.txt", entries)
-  assert_true(source.contains("(\"a\\\"b\", \"c\\\\d\"),"))
+test "lines_of drops the empty piece after a trailing newline" {
+  let lines = lines_of("a\nb\n")
+  assert_eq(lines.length(), 2)
+  assert_eq(lines[0], "a")
+  assert_eq(lines[1], "b")
+  assert_eq(lines_of("").length(), 0)
+}
+
+///|
+test "emitted modules embed the dictionary text verbatim" {
+  let source = emit_dictionary("sample", "Sample.txt", "# header\n甲\tA\n")
+  assert_true(source.contains("let sample_chunk_0 : String ="))
+  assert_true(source.contains("  #|# header\n"))
+  assert_true(source.contains("  #|甲\tA\n"))
+  assert_true(source.contains("pub let sample : Array[String] = ["))
+}
+
+///|
+test "long dictionaries are split into chunks" {
+  // chunk_lines is 4000, so 4001 lines must produce a second chunk.
+  let out = StringBuilder()
+  let mut index = 0
+  while index < 4001 {
+    out.write_string("甲\tA\n")
+    index = index + 1
+  }
+  let source = emit_dictionary("sample", "Sample.txt", out.to_string())
+  assert_true(source.contains("sample_chunk_1 : String ="))
 }

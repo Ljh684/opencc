@@ -56,26 +56,85 @@ fn longest_first(left : (String, String), right : (String, String)) -> Int {
 }
 
 ///|
+/// Add one entry to a bucket index under construction.
+fn add_entry(
+  buckets : Map[UInt16, Array[(String, String)]],
+  groups : Array[Array[(String, String)]],
+  key : String,
+  value : String,
+) -> Unit {
+  let entry = (key, value)
+  let first_code_unit = key.unsafe_get(0)
+  match buckets.get(first_code_unit) {
+    Some(bucket) => bucket.push(entry)
+    None => {
+      let bucket : Array[(String, String)] = [entry]
+      buckets.set(first_code_unit, bucket)
+      groups.push(bucket)
+    }
+  }
+}
+
+///|
 /// Build a dictionary and its index from raw pairs.
 ///
 /// Entries with an empty key are dropped: they could never advance the cursor.
-pub fn Dict::new(name : String, pairs : Array[(String, String)]) -> Dict {
+pub fn Dict::of_pairs(name : String, pairs : Array[(String, String)]) -> Dict {
   let buckets : Map[UInt16, Array[(String, String)]] = Map([])
   let groups : Array[Array[(String, String)]] = []
   let mut size = 0
   for pair in pairs {
-    let key = pair.0
-    if key.is_empty() {
+    if pair.0.is_empty() {
       continue
     }
     size = size + 1
-    let first = key.unsafe_get(0)
-    match buckets.get(first) {
-      Some(bucket) => bucket.push(pair)
-      None => {
-        let bucket : Array[(String, String)] = [pair]
-        buckets.set(first, bucket)
-        groups.push(bucket)
+    add_entry(buckets, groups, pair.0, pair.1)
+  }
+  for bucket in groups {
+    bucket.sort_by(longest_first)
+  }
+  { name, buckets, size, }
+}
+
+///|
+/// Parse an OpenCC dictionary and index it.
+///
+/// The chunks are the dictionary's own text, embedded at build time. The format
+/// is the one upstream documents in every file header: one entry per line,
+/// `key<TAB>value(s)` with values separated by spaces; blank lines and lines
+/// starting with `#` are ignored. Only the first value is kept, because the
+/// remaining candidates take part in segmentation scoring, which this engine
+/// does not perform (see docs/design.md).
+///
+/// Lines that cannot be parsed are skipped rather than failing: `tools/gen_dict`
+/// already refuses to generate such data, so at this point they can only come
+/// from a corrupted embed.
+pub fn Dict::parse(name : String, chunks : Array[String]) -> Dict {
+  let buckets : Map[UInt16, Array[(String, String)]] = Map([])
+  let groups : Array[Array[(String, String)]] = []
+  let mut size = 0
+  for chunk in chunks {
+    for raw in chunk.split("\n") {
+      let line = raw.trim_end()
+      if line.is_empty() {
+        continue
+      }
+      if line.has_prefix("#") {
+        continue
+      }
+      match line.split_once("\t") {
+        Some((key, rest)) => {
+          if key.is_empty() {
+            continue
+          }
+          let value = match rest.split_once(" ") {
+            Some((first, _)) => first
+            None => rest
+          }
+          size = size + 1
+          add_entry(buckets, groups, key.to_owned(), value.to_owned())
+        }
+        None => ()
       }
     }
   }

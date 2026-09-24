@@ -39,30 +39,38 @@ moon run tools/bench_lookup --target native
   真正的上界要等 F5 打通官方语料后，用全量文本统计峰值。
 - 目前的数字只覆盖 `s2t-lite`，未包含归一化与台湾/香港用词链路。
 
-## 构建耗时（同一台机器，2026-09-25）
+## 构建耗时
 
-生成的数据是"每个词典一个数组常量"，条目多，编译器要处理的语句也多：
+### 改造前：每个词典一个「逐条字面量」数组（2026-09-25 上午）
 
 | 动作 | 耗时 |
 | --- | --- |
-| `moon build --target wasm-gc`（库） | 约 6 s |
-| `moon test --target wasm-gc` | 3.4 s（21 个测试） |
-| `moon test --target js` | 1.9 s（需要 PATH 上有 node） |
+| `moon test --target wasm-gc` | 3.4 s |
 | `moon test --target native` | **341 s** |
-| `moon run cmd/opencc --target native` 首次 | 约 3 min（native 链接） |
+| `moon run cmd/opencc --target native` 首次 | 约 3 min |
+| `moon test --target wasm`（非 gc） | **编译失败**：`local count` 超后端上限 |
 
-结论：native 链路是当前的瓶颈，根因是逐条字面量造成巨大的编译/链接单元。
-列为后续改造项（F8）：把词典表示改为"分块的字符串块 + 运行时一次扫描建立索引"，
-预期同时解决下面这条限制并显著缩短 native 构建时间。
+### 改造后：内嵌文本块 + 运行时建索引（同日）
 
-## 后端限制（实测）
-
-| 后端 | 库构建 | 测试 |
+| 动作 | 耗时 | 变化 |
 | --- | --- | --- |
-| wasm-gc | 通过 | 21/21 通过 |
-| native | 通过 | 21/21 通过（慢） |
-| js | 通过 | 需要 node 在 PATH（本机未装） |
-| wasm（非 gc） | 通过 | **测试二进制编译失败**：`local count` 超出后端上限 |
+| `moon test --target wasm-gc` | **0.8 s** | 4.3× |
+| `moon test --target native` | **7 s** | **49×** |
+| `moon test --target wasm`（非 gc） | **1.6 s，26/26 通过** | 从"编译失败"到通过 |
+| `moon run cmd/opencc --target native -- verify` 首次 | **3.4 s** | 约 55× |
+| 生成的数据体积 | 2.1 MB → **1.68 MB** | 20% |
 
-因此 `moon.mod` 把 `preferred_target` 设为 `wasm-gc`，CI 也用 wasm-gc 跑测试。
-这是数据规模带来的真实边界，写在这里而不是留待评审发现。
+根因很直接：逐条字面量让 native 编译器要为 7.6 万条目生成巨大函数，而一个词典一个字符串块
+只要处理 20 个常量。改造同时消掉了 plain wasm 后端的局部变量上限问题。
+
+## 后端与产物（2026-09-25，改造后）
+
+| 后端 | 库构建 | 测试 | CLI 产物 |
+| --- | --- | --- | --- |
+| wasm-gc | 通过 | 26/26 | `opencc.wasm` 1.31 MB |
+| wasm（非 gc） | 通过 | 26/26 | — |
+| js | 通过 | 需要 node 在 PATH | `opencc.js` 1.66 MB |
+| native | 通过 | 26/26 | `opencc.exe` 1.54 MB |
+
+CLI 产物包含全部 20 个词典（约 1.7 MB 文本）。按配置裁剪词典（design 里的
+minimal / standard / full 三档）是后续的体积优化项。
