@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# Keep CI reproducible with the toolchain used to validate this snapshot.
+# Update deliberately when the project adopts a newer MoonBit release.
+env:
+  MOONBIT_INSTALL_VERSION: "0.1.20260920"
+
 jobs:
   test:
     runs-on: ubuntu-latest
