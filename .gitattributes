@@ -1,0 +1,3 @@
+# Keep source, generated modules, and pinned data snapshots byte-stable across
+# Windows and Unix checkouts. The generator verifies SHA-256 over file bytes.
+* text=auto eol=lf
