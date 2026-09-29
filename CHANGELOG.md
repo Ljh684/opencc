@@ -8,6 +8,9 @@
   `opencc_to_taiwan` / `opencc_to_simplified`，附 `demo.mjs` 与 `index.html`。
 - 热路径优化：跳过不可能命中任何词条的连续片段，ASCII 密集文本 4724 → 7503 码元/ms。
 - GitHub Release [v0.1.0](https://github.com/Ljh684/opencc/releases/tag/v0.1.0)。
+- CI 修复并转绿：安装脚本的两个主机都试、下载失败不再伪装成成功、干净 runner 上先
+  `moon update` 建注册表索引；读文件的步骤显式用 `--target native`；两个 job 合并为一次
+  工具链下载。仓库首页现在显示绿色 CI 徽章。
 
 ## 0.1.0 — 2026-09-24 起
 

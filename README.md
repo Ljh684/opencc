@@ -1,5 +1,9 @@
 # opencc.mbt
 
+[![CI](https://github.com/Ljh684/opencc/actions/workflows/ci.yml/badge.svg)](https://github.com/Ljh684/opencc/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Ljh684/opencc)](https://github.com/Ljh684/opencc/releases)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 **OpenCC-compatible Chinese script conversion in pure MoonBit — no FFI, no runtime I/O, runs on wasm, wasm-gc, js and native.**
 
 简体 ↔ 繁体 ↔ 台湾正体 ↔ 香港繁体 ↔ 日本新字体，包含词组与地区用词转换，行为对齐 [OpenCC](https://github.com/BYVoid/OpenCC)，并以 OpenCC 官方语料的一致性通过率作为验收标准。
