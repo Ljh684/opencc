@@ -107,6 +107,28 @@ let chain = @opencc.chain("s2twp")
 完整对比（含审阅者三分钟验证清单）见 [docs/comparison.md](docs/comparison.md)，
 一页项目说明见 [docs/one-pager.md](docs/one-pager.md)。
 
+## 演示
+
+```bash
+moon build examples/web --target js --release   # 产出可被 JS 调用的模块
+node examples/web/demo.mjs                      # 命令行演示
+python -m http.server                           # 再打开 examples/web/index.html 看网页 demo
+```
+
+`examples/web` 是一个 `foreign_library` 包，用 `#export_name` 导出 `opencc_to_taiwan` 与
+`opencc_to_simplified` 两个函数（JS 侧的类型声明见构建产物 `web.d.ts`）。网页 demo 直接调用
+编译后的模块，没有任何网络请求；产物 1.36 MB，只包含 s2twp 与 t2s 两个方向需要的词典。
+
+```
+$ node examples/web/demo.mjs
+内存泄漏与软件优化
+  → TW  記憶體洩漏與軟體最佳化
+  → 简  记忆体泄漏与软体最佳化
+较低级别的官员由总统任命。
+  → TW  較低級別的官員由總統任命。
+  → 简  较低级别的官员由总统任命。
+```
+
 ## 数据来源与许可
 
 - 本仓库的 MoonBit 代码以 **Apache-2.0** 发布，见 [LICENSE](LICENSE)。

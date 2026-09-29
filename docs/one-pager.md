@@ -29,6 +29,7 @@
 | 可逆性 | `s2t → t2s`、`s2tw → tw2s` 往返逐字节回到源文本 | `opencc verify` 的 round-trip 段 |
 | 形态 | 纯 MoonBit、零 FFI、编译期内联数据；wasm / wasm-gc / js / native 四后端都能构建并测 | `moon test --target <t>` |
 | 体积 | 单方向构建 t2s **249 KB**、s2t **913 KB**（全量 CLI 1341 KB，wasm-gc release） | `moon build examples/t2s --target wasm-gc --release` |
+| 可用性 | CLI（`convert` / `verify`）与库 API；`examples/web` 导出可在浏览器/Node 直接调用的函数 | `node examples/web/demo.mjs` |
 
 ## 当前进度
 

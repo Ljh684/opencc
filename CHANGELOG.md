@@ -4,7 +4,10 @@
 
 ## Unreleased
 
-- 暂无。
+- 网页/Node 演示 `examples/web`：`foreign_library` + `#export_name` 导出
+  `opencc_to_taiwan` / `opencc_to_simplified`，附 `demo.mjs` 与 `index.html`。
+- 热路径优化：跳过不可能命中任何词条的连续片段，ASCII 密集文本 4724 → 7503 码元/ms。
+- GitHub Release [v0.1.0](https://github.com/Ljh684/opencc/releases/tag/v0.1.0)。
 
 ## 0.1.0 — 2026-09-24 起
 

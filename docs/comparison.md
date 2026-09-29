@@ -73,6 +73,8 @@ moon run tools/gen_dict --target native -- --verify        # 数据与生成结�
 moon run cmd/opencc --target native -- -c s2twp --text "内存泄漏与软件优化"
 # => 記憶體洩漏與軟體最佳化
 moon build examples/t2s --target wasm-gc --release         # 单方向构建 249 KB
+moon build examples/web --target js --release && node examples/web/demo.mjs
+# 网页/Node 可直接调用的两个函数，浏览器 demo 见 examples/web/index.html
 ```
 
 `verify` 还会把每份官方输出用反向配置转回去：`s2t → t2s` 与 `s2tw → tw2s` 逐字节回到源文本；

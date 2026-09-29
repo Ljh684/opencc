@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <title>opencc.mbt — 简繁转换 demo</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 46rem; line-height: 1.6; }
+      textarea { width: 100%; min-height: 6rem; font-size: 1rem; padding: .6rem; box-sizing: border-box; }
+      h1 { font-size: 1.3rem; }
+      .out { background: #f6f7fb; padding: .8rem; border-radius: .4rem; min-height: 3rem; white-space: pre-wrap; }
+      .note { color: #666; font-size: .85rem; }
+    </style>
+  </head>
+  <body>
+    <h1>opencc.mbt — 简繁与地区用词转换</h1>
+    <p class="note">
+      纯 MoonBit、零 FFI，词典在编译期内联。转换由本页直接调用编译出来的
+      wasm/JS 模块完成，没有网络请求。
+    </p>
+    <textarea id="input">内存泄漏与软件优化，级别很低。</textarea>
+    <p><button id="tw">→ 台湾正体（含用词）</button> <button id="cn">→ 简体</button></p>
+    <div class="out" id="output"></div>
+    <p class="note">
+      构建：<code>moon build examples/web --target js --release</code>，
+      然后在仓库根目录起一个静态服务器（浏览器不允许 file:// 加载 ES 模块），例如
+      <code>python -m http.server</code>，再打开本页。
+    </p>
+    <script type="module">
+      import { opencc_to_taiwan, opencc_to_simplified } from "../../_build/js/release/build/examples/web/web.js";
+      const input = document.getElementById("input");
+      const output = document.getElementById("output");
+      document.getElementById("tw").onclick = () => { output.textContent = opencc_to_taiwan(input.value); };
+      document.getElementById("cn").onclick = () => { output.textContent = opencc_to_simplified(input.value); };
+      output.textContent = opencc_to_taiwan(input.value);
+    </script>
+  </body>
+</html>

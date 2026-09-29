@@ -1,0 +1,22 @@
+// Browser/Node demo: a small library that converts in both directions, built for
+// the JS target so a page (or a script) can call it directly.
+//
+//     moon build examples/web --target js --release   # -> web.js
+//     node examples/web/demo.mjs
+//
+// The two configurations below are imported individually, so the bundle only
+// contains the dictionaries they need.
+import {
+  "Ljh684/opencc/config/s2twp" @to_taiwan,
+  "Ljh684/opencc/config/t2s" @to_simplified,
+}
+
+// A foreign library is built as an artifact for another host to call into; the
+// `#export_name` attributes in lib.mbt are what make the two functions reachable
+// from JavaScript.
+pkgtype(kind: "foreign_library")
+
+// `foreign_library` has no entry point, and native cannot link one as a library
+// (see the packaging docs), so this example is JS-only.
+
+supported_targets = "js"
