@@ -5,10 +5,15 @@ on:
     branches: [main]
   pull_request:
 
-# Keep CI reproducible with the toolchain used to validate this snapshot.
-# Update deliberately when the project adopts a newer MoonBit release.
+# The MoonBit download server only publishes the `latest` and `nightly` channels:
+# version-numbered directories return 404 (checked: binaries/0.1.20260920/... and
+# binaries/0.1.20260920%2B914d7da/... both 404, while latest and nightly are 200).
+# Setting MOONBIT_INSTALL_VERSION to a version string therefore breaks the install
+# — that is what made this workflow red — so the toolchain is installed from
+# `latest` and the version actually installed is printed and compared below.
+# Real gates are check, tests, generated-data verification and the golden corpus.
 env:
-  MOONBIT_INSTALL_VERSION: "0.1.20260920"
+  VALIDATED_MOON_VERSION: "0.1.20260920"
 
 jobs:
   test:
@@ -22,7 +27,11 @@ jobs:
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
 
       - name: Toolchain version
-        run: moon version
+        run: |
+          moon version
+          if ! moon version | grep -q "$VALIDATED_MOON_VERSION"; then
+            echo "::warning title=MoonBit toolchain changed::Installed version is not $VALIDATED_MOON_VERSION. Re-run the snapshot validation and update VALIDATED_MOON_VERSION deliberately."
+          fi
 
       - name: Type check
         run: moon check
@@ -52,6 +61,9 @@ jobs:
         run: |
           curl -fsSL https://cli.moonbitlang.cn/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+
+      - name: Toolchain version
+        run: moon version
 
       - name: Verify generated data is up to date
         run: moon run tools/gen_dict -- --verify
