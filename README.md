@@ -104,7 +104,8 @@ let chain = @opencc.chain("s2twp")
 - **数据可审计**：上游 revision、逐文件 SHA-256、`gen_dict --verify` 幂等校验，
   连 OpenCC 构建期生成的派生词典都按上游规则复刻并留下可读文本。
 
-完整对比（含审阅者三分钟验证清单）见 [docs/comparison.md](docs/comparison.md)。
+完整对比（含审阅者三分钟验证清单）见 [docs/comparison.md](docs/comparison.md)，
+一页项目说明见 [docs/one-pager.md](docs/one-pager.md)。
 
 ## 数据来源与许可
 
