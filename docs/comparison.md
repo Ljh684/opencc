@@ -67,11 +67,12 @@ GitHub：
 
 ```bash
 moon check                                  # 类型检查，无警告
-moon test                                   # 30 个单元测试（含 76099 条目的全量属性测试）
+moon test                                   # 31 个单元测试（含 76099 条目的全量属性测试）
 moon run cmd/opencc --target native -- verify              # 官方语料 5/5 + 往返一致性
 moon run tools/gen_dict --target native -- --verify        # 数据与生成结果一致
 moon run cmd/opencc --target native -- -c s2twp --text "内存泄漏与软件优化"
 # => 記憶體洩漏與軟體最佳化
+moon build examples/t2s --target wasm-gc --release         # 单方向构建 249 KB
 ```
 
 `verify` 还会把每份官方输出用反向配置转回去：`s2t → t2s` 与 `s2tw → tw2s` 逐字节回到源文本；

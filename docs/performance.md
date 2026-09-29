@@ -72,5 +72,19 @@ moon run tools/bench_lookup --target native
 | js | 通过 | 需要 node 在 PATH | `opencc.js` 1.66 MB |
 | native | 通过 | 26/26 | `opencc.exe` 1.54 MB |
 
-CLI 产物包含全部 20 个词典（约 1.7 MB 文本）。按配置裁剪词典（design 里的
-minimal / standard / full 三档）是后续的体积优化项。
+## 按配置裁剪词典（2026-09-30）
+
+每个词典是独立包，每个配置也是独立包（只 import 它用到的词典），所以"只想做某个方向"
+的程序不会链进其它词典。三个可复现的实测（`moon build <path> --target wasm-gc --release`）：
+
+| 构建 | 链入的词典数据 | wasm-gc 产物 |
+| --- | --- | --- |
+| `examples/t2s`（只用 t2s） | 180 KB | **249 KB** |
+| `examples/s2t`（只用 s2t） | 1294 KB | **913 KB** |
+| `cmd/opencc`（19 个配置都要） | 1680 KB | 1341 KB |
+
+结论：反向或地区方向收益最大（t2s 相对全量 5.4× 更小），而 `s2*` 方向的体积由
+`STPhrases`（1178 KB，占全量的 70%）决定，任何正向配置都躲不开它——这一点如实写在表里，
+不假装裁剪能解决所有场景。
+
+各配置的词典构成可以用 `tools/gen_dict --verify` 之后的 `config/<name>/moon.pkg` 直接看到。

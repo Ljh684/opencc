@@ -188,6 +188,25 @@ fn verify_pkg_ignores(path : String, required : Array[String]) -> Int {
 }
 
 ///|
+/// Write a generated package configuration, or check its content in verify mode.
+///
+/// Package configuration is never compared byte for byte: `moon fmt` owns its
+/// formatting, so the generator only guarantees what it must contain.
+fn sync_pkg(
+  path : String,
+  content : String,
+  required : Array[String],
+  verify : Bool,
+) -> Int {
+  if verify {
+    verify_pkg_ignores(path, required)
+  } else {
+    write_text(path, content)
+    0
+  }
+}
+
+///|
 /// Build the manifest module that records where every dictionary came from.
 fn emit_manifest(
   repository : String,
@@ -239,6 +258,7 @@ fn main {
   let mut out_dir = "dict"
   let mut config_out = "config"
   let mut derived_dir = "data/derived"
+  let mut module_path = "Ljh684/opencc"
   let mut verify = false
   // Args may or may not carry the executable as argv[0] depending on the
   // backend, so start at the first flag.
@@ -259,6 +279,9 @@ fn main {
       index = index + 2
     } else if arg == "--derived-out" && index + 1 < args.length() {
       derived_dir = args[index + 1]
+      index = index + 2
+    } else if arg == "--module" && index + 1 < args.length() {
+      module_path = args[index + 1]
       index = index + 2
     } else if arg == "--verify" {
       verify = true
@@ -330,10 +353,22 @@ fn main {
     bindings.push(binding)
     data.set(binding, pairs)
     total_entries = total_entries + parsed.entries.length()
+    // Each dictionary is its own package: a consumer of one configuration then
+    // links only that configuration's dictionaries.
+    if !verify {
+      ensure_dir(out_dir + "/" + binding)
+    }
     problems = problems +
       sync_file(
-        out_dir + "/" + binding + ".mbt",
-        emit_dictionary(binding, "data/opencc/dictionary/" + file, text),
+        out_dir + "/" + binding + "/data.mbt",
+        emit_dict_data(binding, "data/opencc/dictionary/" + file, text),
+        verify,
+      )
+    problems = problems +
+      sync_pkg(
+        out_dir + "/" + binding + "/moon.pkg",
+        emit_dict_subpkg(),
+        ["data.mbt"],
         verify,
       )
     rows.push(
@@ -382,10 +417,20 @@ fn main {
       sync_file(derived_dir + "/" + derived_file, text, verify)
     bindings.push(derived_binding)
     total_entries = total_entries + derived.length()
+    if !verify {
+      ensure_dir(out_dir + "/" + derived_binding)
+    }
     problems = problems +
       sync_file(
-        out_dir + "/" + derived_binding + ".mbt",
-        emit_dictionary(derived_binding, derived_dir + "/" + derived_file, text),
+        out_dir + "/" + derived_binding + "/data.mbt",
+        emit_dict_data(derived_binding, derived_dir + "/" + derived_file, text),
+        verify,
+      )
+    problems = problems +
+      sync_pkg(
+        out_dir + "/" + derived_binding + "/moon.pkg",
+        emit_dict_subpkg(),
+        ["data.mbt"],
         verify,
       )
     rows.push(
@@ -414,16 +459,15 @@ fn main {
       ),
       verify,
     )
+  problems = problems +
+    sync_file(out_dir + "/reexport.mbt", emit_reexport(bindings), verify)
 
   let dict_pkg = out_dir + "/moon.pkg"
-  let ignored : Array[String] = ["manifest.mbt"]
-  for binding in bindings {
-    ignored.push(binding + ".mbt")
-  }
   if verify {
-    problems = problems + verify_pkg_ignores(dict_pkg, ignored)
+    problems = problems +
+      verify_pkg_ignores(dict_pkg, ["manifest.mbt", "reexport.mbt"])
   } else {
-    write_text(dict_pkg, emit_pkg(bindings))
+    write_text(dict_pkg, emit_dict_aggregate_pkg(module_path, bindings))
   }
 
   // Configurations: parsed from the same snapshot, emitted as pass trees.
@@ -452,6 +496,28 @@ fn main {
   }
   problems = problems +
     sync_file(config_out + "/chains.mbt", emit_chains(specs, bindings), verify)
+  // One package per configuration: a program that needs one direction links one
+  // direction's worth of dictionaries, which matters most for the reverse and
+  // regional configurations (t2s needs 180 KB of data, s2t 1294 KB, all 1680 KB).
+  for spec in specs {
+    let used = used_bindings(spec, bindings)
+    if !verify {
+      ensure_dir(config_out + "/" + spec.name)
+    }
+    problems = problems +
+      sync_pkg(
+        config_out + "/" + spec.name + "/moon.pkg",
+        emit_config_subpkg(module_path, used),
+        ["chain.mbt"],
+        verify,
+      )
+    problems = problems +
+      sync_file(
+        config_out + "/" + spec.name + "/chain.mbt",
+        emit_config_chain(spec, bindings, missing_of(spec, bindings)),
+        verify,
+      )
+  }
   let config_pkg = config_out + "/moon.pkg"
   if verify {
     problems = problems + verify_pkg_ignores(config_pkg, ["chains.mbt"])

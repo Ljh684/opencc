@@ -49,7 +49,7 @@ test "lines_of drops the empty piece after a trailing newline" {
 
 ///|
 test "emitted modules embed the dictionary text verbatim" {
-  let source = emit_dictionary("sample", "Sample.txt", "# header\n甲\tA\n")
+  let source = emit_dict_data("sample", "Sample.txt", "# header\n甲\tA\n")
   assert_true(source.contains("let sample_chunk_0 : String ="))
   assert_true(source.contains("  #|# header\n"))
   assert_true(source.contains("  #|甲\tA\n"))
@@ -65,6 +65,29 @@ test "long dictionaries are split into chunks" {
     out.write_string("甲\tA\n")
     index = index + 1
   }
-  let source = emit_dictionary("sample", "Sample.txt", out.to_string())
+  let source = emit_dict_data("sample", "Sample.txt", out.to_string())
   assert_true(source.contains("sample_chunk_1 : String ="))
+}
+
+///|
+test "config packages reference only the dictionaries they use" {
+  let spec : ChainSpec = {
+    name: "sample",
+    title: "Sample configuration",
+    normalization: [Leaf("cjk")],
+    segmentation: Some(Group(Union, [Leaf("phrases"), Leaf("absent")])),
+    conversion: [Group(ShortCircuit, [Leaf("phrases"), Leaf("characters")])],
+  }
+  let available = ["cjk", "phrases", "characters"]
+  let used = used_bindings(spec, available)
+  assert_eq(used.length(), 3)
+  let pkg = emit_config_subpkg("mod/name", used)
+  assert_true(pkg.contains("\"mod/name/core\""))
+  assert_true(pkg.contains("\"mod/name/dict/phrases\""))
+  assert_true(!pkg.contains("absent"))
+  let chain = emit_config_chain(spec, available, missing_of(spec, available))
+  assert_true(chain.contains("@phrases.phrases"))
+  // The absent dictionary is reported, never referenced.
+  assert_true(chain.contains("pub let missing : Array[String] = [\"absent\""))
+  assert_true(!chain.contains("@absent"))
 }

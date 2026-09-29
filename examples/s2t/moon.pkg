@@ -1,0 +1,7 @@
+// Minimal example: one configuration, so the linker only keeps that
+// configuration's dictionaries. Compare with cmd/opencc, which needs them all.
+import {
+  "Ljh684/opencc/config/s2t" @convert,
+}
+
+pkgtype(kind: "executable")

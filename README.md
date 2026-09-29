@@ -179,7 +179,8 @@ docs/                  设计文档与验收标准
 | F6 CLI 与配置覆盖 | `list-configs` / `convert` / `verify`，库入口 `convert(name, text)` | 已完成 |
 | F7 数据表示 | 内嵌文本块 + 运行时建索引：native 测试 341 s → 7 s，解除 plain wasm 上限 | 已完成 |
 | F8 覆盖与属性测试 | 全量条目属性测试、往返一致性检查、缺失词典台账、行粒度与稳定性属性 | 已完成 |
-| F9 体积与发布 | 按配置裁剪词典（minimal / standard / full）、发布到 mooncakes | 下一步 |
+| F9 按配置裁剪 | 词典/配置各自成包：t2s 构建 249 KB、s2t 913 KB、全量 CLI 1341 KB（wasm-gc） | 已完成 |
+| F10 发布 | 发布到 mooncakes、GitHub Release 与演示素材 | 下一步 |
 
 ## 已知限制
 
@@ -188,8 +189,9 @@ docs/                  设计文档与验收标准
 - CLI 还不支持标准输入：MoonBit 的 core 与 `moonbitlang/x` 目前没有标准输入 API，
   加 FFI 会破坏「零 FFI」，因此先用文件与 `--text`；stdout 输出在以换行结尾的文本上
   与输入等价，否则会补一个换行（`-o` 输出文件是逐字节精确的路径）。
-- 生成的 CLI 产物包含全部 20 个词典（wasm-gc 1.31 MB / js 1.66 MB / native 1.54 MB）；
-  按配置裁剪词典的体积优化列为后续项（见 [docs/performance.md](docs/performance.md)）。
+- `cmd/opencc` 需要按名字查找配置，因此会链入全部词典（wasm-gc 1.31 MB）。只想做单一方向
+  的程序请用 `config/<name>` 包，例如 `examples/t2s` 只有 249 KB（见
+  [docs/performance.md](docs/performance.md)）。
 - 反方向配置（`t2s`、`tw2s`、`hk2s`）缺少官方语料可对标，目前只有正向 5 条链的
   逐字节证据；覆盖与属性测试是下一步。
 

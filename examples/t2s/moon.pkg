@@ -1,0 +1,7 @@
+// Minimal example for the reverse direction: t2s needs 180 KB of dictionary
+// data where s2t needs 1294 KB, and the size of the built artifact shows it.
+import {
+  "Ljh684/opencc/config/t2s" @convert,
+}
+
+pkgtype(kind: "executable")
