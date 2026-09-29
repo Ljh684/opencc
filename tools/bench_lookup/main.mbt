@@ -2,6 +2,9 @@
 //
 // It exists so that "the index made lookups fast enough" is a number in the
 // repository rather than an opinion, and so regressions show up as a slower run.
+// Two corpora are measured: the official golden input (dense Chinese) and a
+// synthetic ASCII-heavy one (markup, code, logs), because they stress different
+// parts of the engine.
 //
 // Usage:
 //     moon run tools/bench_lookup --target native
@@ -17,6 +20,48 @@ fn read_text(path : String) -> String {
       ""
     }
   }
+}
+
+///|
+/// A synthetic ASCII-heavy corpus of about 30k code units.
+fn ascii_corpus() -> String {
+  let out = StringBuilder()
+  let mut index = 0
+  while index < 400 {
+    out.write_string("<p class=\"note-")
+    out.write_string(index.to_string())
+    out.write_string(
+      "\">The quick brown fox jumps over the lazy dog. 0123456789</p>\n",
+    )
+    index = index + 1
+  }
+  out.to_string()
+}
+
+///|
+/// Run the chain until the clock is meaningful and report (passes, code units, ms).
+///
+/// `now()` has millisecond resolution, so a single pass over a small document
+/// would read as 0 ms; the batch grows until the measurement is above 50 ms.
+fn measure(chain : @core.Chain, text : String) -> (Int, Int, UInt64) {
+  let mut passes = 1
+  let mut elapsed : UInt64 = 0
+  let mut output = ""
+  while passes <= 4096 {
+    let start = @env.now()
+    let mut pass = 0
+    while pass < passes {
+      output = chain.apply(text)
+      pass = pass + 1
+    }
+    elapsed = @env.now() - start
+    if elapsed >= 50 {
+      break
+    }
+    passes = passes * 2
+  }
+  ignore(output)
+  (passes, text.length() * passes, elapsed)
 }
 
 ///|
@@ -38,14 +83,8 @@ fn main {
     }
   }
 
-  let text = read_text(input_path)
-  println(
-    "input        : " +
-    input_path +
-    " (" +
-    text.length().to_string() +
-    " code units)",
-  )
+  let chinese = read_text(input_path)
+  let ascii = ascii_corpus()
 
   let build_start = @env.now()
   let phrases = @core.Dict::parse("STPhrases", @dict.st_phrases)
@@ -88,32 +127,40 @@ fn main {
   ])
   let chain = @core.Chain::new("s2t-lite", [], None, [pass])
 
-  // Grow the batch until the clock is meaningful: `now()` has millisecond
-  // resolution, so a single pass over a small document would read as 0 ms.
-  let mut rounds = 1
-  let mut elapsed : UInt64 = 0
-  let mut output = ""
-  while rounds <= 4096 {
-    let start = @env.now()
-    let mut round = 0
-    while round < rounds {
-      output = chain.apply(text)
-      round = round + 1
-    }
-    elapsed = @env.now() - start
-    if elapsed >= 50 {
-      break
-    }
-    rounds = rounds * 2
-  }
+  let (passes1, units1, elapsed1) = measure(chain, chinese)
+  println("")
+  println(
+    "corpus       : Chinese (opencc golden input, " +
+    chinese.length().to_string() +
+    " code units)",
+  )
+  report(passes1, units1, elapsed1)
 
-  let units = text.length() * rounds
+  let (passes2, units2, elapsed2) = measure(chain, ascii)
+  println("")
+  println(
+    "corpus       : ASCII-heavy (synthetic markup, " +
+    ascii.length().to_string() +
+    " code units)",
+  )
+  report(passes2, units2, elapsed2)
+
+  println("")
+  println(
+    "note         : s2t-lite = short_circuit(STPhrases, STCharacters); the",
+  )
+  println("               official chain adds the CJK normalisation pass (F5).")
+}
+
+///|
+/// Print one measurement line.
+fn report(passes : Int, units : Int, elapsed : UInt64) -> Unit {
   let milliseconds = elapsed.to_int() + 1
   println(
     "converted    : " +
     units.to_string() +
     " code units over " +
-    rounds.to_string() +
+    passes.to_string() +
     " pass(es) in " +
     elapsed.to_string() +
     " ms",
@@ -121,14 +168,4 @@ fn main {
   println(
     "throughput   : " + (units / milliseconds).to_string() + " code units/ms",
   )
-  println(
-    "output       : " +
-    output.length().to_string() +
-    " code units, starts with " +
-    output[:120].to_owned(),
-  )
-  println(
-    "note         : s2t-lite = short_circuit(STPhrases, STCharacters); the",
-  )
-  println("               official chain adds the CJK normalisation pass (F5).")
 }

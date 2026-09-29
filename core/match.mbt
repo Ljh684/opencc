@@ -72,6 +72,26 @@ pub fn Node::lookup(self : Node, text : String, start : Int) -> (Int, String)? {
 }
 
 ///|
+/// Whether any key of this node can start with the given code unit.
+///
+/// This is what lets the engine copy a whole run of text that no key can begin
+/// with in one go, instead of asking the dictionary at every code unit — the same
+/// shortcut OpenCC's `PrefixMatch::SkipUnmatchable` takes.
+pub fn Node::can_start(self : Node, unit : UInt16) -> Bool {
+  match self {
+    Leaf(dict) => dict.buckets.contains(unit)
+    Group(_, children) => {
+      for child in children {
+        if child.can_start(unit) {
+          return true
+        }
+      }
+      false
+    }
+  }
+}
+
+///|
 /// Apply one pass over the whole text.
 ///
 /// Characters without a match are copied through unchanged, which is what keeps
@@ -87,9 +107,19 @@ pub fn Node::apply(self : Node, text : String) -> String {
         cursor = cursor + len
       }
       None => {
-        // `write_substring` takes (start, length) — not an end offset.
+        // No key matched here. Copy this code unit and then extend the copy over
+        // the following ones that cannot start any key either, so an ASCII run
+        // costs one substring write instead of one per character.
+        // (`write_substring` takes (start, length) — not an end offset.)
         out.write_substring(text, cursor, 1)
         cursor = cursor + 1
+        let run = cursor
+        while cursor < end && !self.can_start(text.unsafe_get(cursor)) {
+          cursor = cursor + 1
+        }
+        if cursor > run {
+          out.write_substring(text, run, cursor - run)
+        }
       }
     }
   }
@@ -137,6 +167,11 @@ fn segment(text : String, dict : Node) -> Array[(Int, Int)] {
         }
         run_length = run_length + 1
         cursor = cursor + 1
+        // Extend the span over code units that cannot start a key either.
+        while cursor < end && !dict.can_start(text.unsafe_get(cursor)) {
+          run_length = run_length + 1
+          cursor = cursor + 1
+        }
       }
     }
   }

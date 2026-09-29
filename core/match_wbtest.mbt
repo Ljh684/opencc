@@ -144,3 +144,28 @@ test "parse ignores comments and lines without a key" {
   let dict = Dict::parse("sample", ["# only comments\n\n\tno key here\n"])
   assert_eq(dict.size(), 0)
 }
+
+///|
+test "runs of unmatchable text are copied verbatim" {
+  // The engine copies whole runs of code units that cannot start any key in one
+  // go; these cases keep that fast path honest (it must not drop or duplicate).
+  let chain = Chain::new("test", [], None, [
+    Node::leaf(Dict::of_pairs("d", [("软", "軟")])),
+  ])
+  assert_eq(chain.apply("abc软d ef"), "abc軟d ef")
+  assert_eq(chain.apply("----"), "----")
+  assert_eq(chain.apply("软abc"), "軟abc")
+  assert_eq(chain.apply("abc软"), "abc軟")
+}
+
+///|
+test "segmentation over a mixed run keeps the same spans" {
+  let boundaries = Dict::of_pairs("seg", [("记忆体", "记忆体")])
+  let chain = Chain::new("test", [], Some(Node::leaf(boundaries)), [
+    Node::leaf(
+      Dict::of_pairs("d", [("记忆体", "記憶體"), ("体", "體")]),
+    ),
+  ])
+  assert_eq(chain.apply("abc记忆体def"), "abc記憶體def")
+  assert_eq(chain.apply("abc"), "abc")
+}

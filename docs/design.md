@@ -84,6 +84,9 @@ OpenCC 的一次转换由三部分组成（以 `s2twp` 为例）：
 词组优先于单字由 `short_circuit` 的顺序保证，而不是靠「更长的 key 优先」这一条规则
 单独完成。实测组大小与吞吐见 [performance.md](performance.md)。
 
+热路径上还有一条源自上游的捷径：`Node::can_start(unit)` 判断某个码元能否作为任何词条的首字，
+`apply` 与分词据此一次拷走整段不可能命中的文本（对应 OpenCC 的 `SkipUnmatchable`）。
+
 ### 数据的表示
 
 生成的 `dict/*.mbt` 不再逐条列出 `(key, value)`，而是**内嵌词典自身的文本**：
