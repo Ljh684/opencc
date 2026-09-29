@@ -5,40 +5,64 @@ on:
     branches: [main]
   pull_request:
 
-# The MoonBit download server only publishes the `latest` and `nightly` channels:
-# version-numbered directories return 404 (checked: binaries/0.1.20260920/... and
-# binaries/0.1.20260920%2B914d7da/... both 404, while latest and nightly are 200).
-# Setting MOONBIT_INSTALL_VERSION to a version string therefore breaks the install
-# — that is what made this workflow red — so the toolchain is installed from
-# `latest` and the version actually installed is printed and compared below.
-# Real gates are check, tests, generated-data verification and the golden corpus.
+# The snapshot was validated with this toolchain. The download server only serves
+# the `latest` and `nightly` channels — version-numbered directories return 404 —
+# so the version cannot be pinned through MOONBIT_INSTALL_VERSION. The workflow
+# installs the default channel and warns (instead of failing) when it moved; the
+# real gates are check, tests, generated-data verification and the golden corpus.
 env:
   VALIDATED_MOON_VERSION: "0.1.20260920"
 
 jobs:
-  test:
+  build-and-verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Install MoonBit toolchain
+        # Two things are handled here because both broke earlier runs:
+        #   * the installer hardcodes the .cn download host, which timed out from a
+        #     GitHub runner (curl error 28 after 300 s), so both hosts are tried;
+        #   * `curl … | bash` reports the exit status of bash, so a failed download
+        #     still looked like a green step — now the toolchain is verified by
+        #     running `moon version` before the step is allowed to pass.
         run: |
-          curl -fsSL https://cli.moonbitlang.cn/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+          set -euo pipefail
+          for host in https://cli.moonbitlang.com https://cli.moonbitlang.cn; do
+            echo "::group::install from $host"
+            if curl -fsSL --retry 3 --retry-delay 5 --connect-timeout 20 --max-time 900 "$host/install/unix.sh" -o /tmp/moonbit-install.sh; then
+              sed -i "s#https://cli.moonbitlang.cn#$host#g" /tmp/moonbit-install.sh
+              if bash /tmp/moonbit-install.sh; then
+                echo "::endgroup::"
+                echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+                "$HOME/.moon/bin/moon" version
+                exit 0
+              fi
+            fi
+            echo "::endgroup::"
+            echo "::warning::$host did not provide a toolchain; trying the next host"
+          done
+          echo "::error::could not install the MoonBit toolchain from any host"
+          exit 1
+
+      - name: Update package registry
+        # A fresh runner has no registry index, and `moon check` needs one to
+        # resolve the `moonbitlang/x` dependency of the CLI and the tools.
+        run: moon update
 
       - name: Toolchain version
         run: |
           moon version
           if ! moon version | grep -q "$VALIDATED_MOON_VERSION"; then
-            echo "::warning title=MoonBit toolchain changed::Installed version is not $VALIDATED_MOON_VERSION. Re-run the snapshot validation and update VALIDATED_MOON_VERSION deliberately."
+            echo "::warning title=MoonBit toolchain changed::Installed version is not $VALIDATED_MOON_VERSION. Re-validate the snapshot and update VALIDATED_MOON_VERSION deliberately."
           fi
 
       - name: Type check
         run: moon check
 
       - name: Unit tests
-        # All four backends run the suite; with the text-block data format each
-        # one takes seconds (see docs/performance.md).
+        # All four backends run the suite; with the text-block data format each one
+        # takes seconds (see docs/performance.md).
         run: |
           for target in wasm wasm-gc js native; do
             echo "::group::moon test --target $target"
@@ -48,25 +72,23 @@ jobs:
 
       - name: Build all targets
         run: |
+          moon build --target wasm --release
           moon build --target wasm-gc --release
           moon build --target js --release
           moon build --target native --release
 
-  golden:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install MoonBit toolchain
-        run: |
-          curl -fsSL https://cli.moonbitlang.cn/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
-
-      - name: Toolchain version
-        run: moon version
-
       - name: Verify generated data is up to date
-        run: moon run tools/gen_dict -- --verify
+        # Native, because the generator reads files; it checks the snapshot's
+        # SHA-256 records and regenerates every module in memory.
+        run: moon run tools/gen_dict --target native -- --verify
 
       - name: Official golden corpus
-        run: moon run cmd/opencc -- verify --golden test/fixtures/golden
+        # Native for the same reason: the CLI reads the corpus from disk.
+        run: moon run cmd/opencc --target native -- verify --golden test/fixtures/golden
+
+      - name: Example builds (size-sensitive consumers)
+        run: |
+          moon build examples/t2s --target wasm-gc --release
+          moon build examples/s2t --target wasm-gc --release
+          moon build examples/web --target js --release
+          node examples/web/demo.mjs
