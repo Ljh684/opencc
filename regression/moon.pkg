@@ -1,0 +1,12 @@
+// Regression suite: every configuration is compared against the committed
+// baseline for a fixed mixed-script sample. This is a lock on behaviour, not a
+// correctness oracle — correctness comes from test/fixtures/golden (see
+// test/fixtures/regression/README.md).
+//
+// The tests read files from disk, so they only run on the native backend.
+import {
+  "Ljh684/opencc/config",
+  "moonbitlang/x/fs",
+} for "test"
+
+supported_targets = "native"

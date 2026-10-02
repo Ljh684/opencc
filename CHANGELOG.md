@@ -13,6 +13,9 @@
   工具链下载。仓库首页现在显示绿色 CI 徽章。
 - CLI 支持多个 `-c` 按顺序串联（与上游一致），以及 `--input-dir` / `--output-dir` 目录批量
   转换（逐文件输出并汇总）；库侧新增 `config.convert_sequence(names, text)`。
+- 回归基线：`test/fixtures/regression/` 给全部 19 个配置各留一份固定语料的输出，
+  `regression/` 包的测试逐个比对——正确性仍由官方 golden 语料保证，基线只锁行为；
+  配套工具 `tools/gen_baseline`（`--verify` 供 CI 使用）。
 
 ## 0.1.0 — 2026-09-24 起
 

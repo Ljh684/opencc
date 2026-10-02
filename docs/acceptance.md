@@ -102,3 +102,12 @@ golden result: 5 passed, 0 failed, 5 skipped (unsupported variants)
 `config.convert("s2twp", …)` 与 `config.convert_sequence(["s2t", "t2s"], …)` 都能直接跑出结果
 （输出分别为 `記憶體洩漏與軟體最佳化` 与原文，后者对应已验证的往返性质）。
 也就是说「下游怎么依赖它」不是承诺，而是跑通过的路径。
+
+## 覆盖层次（2026-10-03）
+
+| 层次 | 覆盖 | 说明 |
+| --- | --- | --- |
+| 官方 oracle | 正向 5 条链（s2t / s2hk / s2tw / s2hkp / s2twp） | 逐字节比对；另含往返检查 |
+| 回归锁 | **全部 19 个配置** | `test/fixtures/regression/` + `regression/` 包的测试；锁行为，不主张正确性 |
+| 数据 | 20 个词典 / 76099 条 | SHA-256 + 重新生成比对 |
+| 属性 | 76099 条词条 | 逐条命中自身 key，另含分词边界、行粒度、稳定性 |

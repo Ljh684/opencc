@@ -1,0 +1,9 @@
+// Writes (or verifies) the per-configuration regression baselines.
+import {
+  "Ljh684/opencc/config",
+  "moonbitlang/core/env",
+  "moonbitlang/x/fs",
+  "moonbitlang/x/sys",
+}
+
+pkgtype(kind: "executable")

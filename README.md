@@ -33,8 +33,8 @@ let chain = @s2twp.chain()
 > CLI 与库 API。
 >
 > **官方一致性：5/5 逐字节通过**（`s2t`、`s2hk`、`s2tw`、`s2hkp`、`s2twp`，
-> 用仓库内 `test/fixtures/golden` 语料）。`moon check` 无警告，30 个单元测试通过
-> （含覆盖 76099 条词典条目的全量属性测试）。
+> 用仓库内 `test/fixtures/golden` 语料）。`moon check` 无警告，**38 个测试**通过
+> （含覆盖 76099 条词典条目的全量属性测试，以及 19 个配置的回归基线）。
 > 见下方[路线图](#路线图)。
 
 ---
@@ -152,6 +152,19 @@ $ node examples/web/demo.mjs
   → TW  較低級別的官員由總統任命。
   → 简  较低级别的官员由总统任命。
 ```
+
+## 测试与验证
+
+| 层次 | 内容 | 命令 |
+| --- | --- | --- |
+| 正确性（oracle） | OpenCC 官方 golden 语料，5 条链逐字节比对 + 往返检查 | `moon run cmd/opencc --target native -- verify` |
+| 回归锁 | `test/fixtures/regression/`：19 个配置各一份基线，锁定行为不漂移（覆盖没有官方语料的另外 14 个配置） | `moon test --target native` |
+| 数据完整性 | 20 个词典 / 76099 条目重新生成后与仓库逐字节一致，SHA-256 全部匹配 | `moon run tools/gen_dict --target native -- --verify` |
+| 属性测试 | 76099 条词条逐条命中自身 key、分词边界、行粒度、二次转换稳定性 | `moon test`（四个后端） |
+| 性能 | 中文密集 / ASCII 密集两个语料的吞吐 | `moon run tools/bench_lookup --target native` |
+
+基线在行为有意变化时才更新：`moon run tools/gen_baseline --target native`，
+理由写进提交信息（见 `test/fixtures/regression/README.md`）。
 
 ## 数据来源与许可
 
