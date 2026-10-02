@@ -94,3 +94,11 @@ golden result: 5 passed, 0 failed, 5 skipped (unsupported variants)
 - 每个提交聚焦一件事，信息用 Conventional Commits：`feat:`、`fix:`、`test:`、`docs:`、`chore:`。
 - 词典或配置更新必须附带一致性报告的通过率变化。
 - 任何行为差异都在 `docs/design.md` 记录，不做静默修改。
+
+## 下游可用性（2026-10-03 实测）
+
+用一个**独立的消费者模块**验证过：在 `moon.work` 里同时挂上本模块与消费者模块，
+消费者只需在 `moon.pkg` 里 `import { "Ljh684/opencc/config" }`，随后
+`config.convert("s2twp", …)` 与 `config.convert_sequence(["s2t", "t2s"], …)` 都能直接跑出结果
+（输出分别为 `記憶體洩漏與軟體最佳化` 与原文，后者对应已验证的往返性质）。
+也就是说「下游怎么依赖它」不是承诺，而是跑通过的路径。

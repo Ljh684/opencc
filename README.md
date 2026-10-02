@@ -10,6 +10,22 @@
 
 仓库：<https://github.com/Ljh684/opencc>
 
+## 安装
+
+```bash
+moon add Ljh684/opencc              # 发布到 mooncakes 后即可这样引用
+```
+
+```moonbit
+// 按名字调用（会链入全部词典）
+let out = @config.convert("s2twp", "内存泄漏与软件优化")   // Some("記憶體洩漏與軟體最佳化")
+
+// 只要一个方向、体积最小：import "Ljh684/opencc/config/s2twp"
+let chain = @s2twp.chain()
+```
+
+`moon.pkg` 里需要 `import { "Ljh684/opencc/config" }`（或单配置包 `.../config/<name>`）。
+
 > 状态：**开发中（WIP）**。已完成：仓库骨架与 Apache-2.0 许可、上游 OpenCC 数据快照
 > （19 个词典 / 19 个配置 / 官方 golden 语料）、转换引擎（首字索引、嵌套词典组、归一化 →
 > 分词 → 逐段转换）、词典生成器（`tools/gen_dict`：把 20 个词典共 76099 条数据编译成
