@@ -223,6 +223,13 @@ test/fixtures/golden/  OpenCC 官方一致性语料（验收基准）
 docs/                  设计文档与验收标准
 ```
 
+### 发布新版本
+
+改 `moon.mod` 里的 `version`，然后 `moon publish`（需要先 `moon login`）。
+已发布版本：[`Ljh684/opencc` v0.1.0](https://mooncakes.io/docs/Ljh684/opencc)；
+发布前建议先跑 `moon test --target native`、`opencc verify` 与 `gen_dict --verify`，
+这三条分别覆盖正确性、往返与数据完整性。
+
 包布局遵循当前 `moon new` 模板：模块根目录本身就是源目录，`cmd/` 放可执行包，
 不再使用旧的 `src/` 约定。
 
