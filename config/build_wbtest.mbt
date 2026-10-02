@@ -149,3 +149,21 @@ test "conversion is stable when applied twice" {
     assert_eq(converted(name, once), once)
   }
 }
+
+///|
+test "a sequence of configurations composes in order" {
+  // s2t followed by t2s is the round trip this project already verifies on the
+  // golden corpus, so composing them must return the original text.
+  let text = "内存泄漏与软件优化"
+  assert_eq(convert_sequence(["s2t", "t2s"], text), Some(text))
+  // Order matters: the same two names the other way round operate on text that
+  // is already simplified, which is a different (and harmless) pass.
+  assert_eq(convert_sequence(["t2s", "s2t"], text), convert("s2t", text))
+}
+
+///|
+test "an unknown name in a sequence stops the whole sequence" {
+  assert_eq(convert_sequence(["s2t", "no-such-config"], "软"), None)
+  assert_eq(convert_sequence(["no-such-config", "s2t"], "软"), None)
+  assert_eq(convert_sequence([], "软"), Some("软"))
+}

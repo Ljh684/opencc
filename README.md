@@ -85,6 +85,10 @@ opencc list-configs
 opencc -c s2twp --text "内存泄漏与软件优化"        # => 記憶體洩漏與軟體最佳化
 opencc convert -c s2t --input in.txt --output out.txt
 
+# 多个 -c 按顺序串联（同上游 CLI），以及整目录批量转换
+opencc -c s2t -c t2s --text "内存泄漏与软件优化"
+opencc convert -c s2twp --input-dir corpus --output-dir converted --ext .txt
+
 # 与 OpenCC 官方语料逐字节比对
 opencc verify --golden test/fixtures/golden
 ```

@@ -71,6 +71,23 @@ pub fn convert(name : String, text : String) -> String? {
 }
 
 ///|
+/// Convert `text` through several configurations, in the order given.
+///
+/// This mirrors the upstream CLI, where `-c` may be repeated: `s2t` followed by
+/// `t2t` composes two chains rather than picking one. Returns `None` as soon as
+/// a name is unknown, so a typo cannot silently drop a pass.
+pub fn convert_sequence(names : Array[String], text : String) -> String? {
+  let mut current = text
+  for name in names {
+    match convert(name, current) {
+      Some(next) => current = next
+      None => return None
+    }
+  }
+  Some(current)
+}
+
+///|
 /// Build every pass of a list, skipping those the snapshot cannot resolve.
 fn build_all(specs : Array[Spec]) -> Array[@core.Node] {
   let nodes : Array[@core.Node] = []

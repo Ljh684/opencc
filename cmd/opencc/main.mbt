@@ -220,16 +220,85 @@ fn list_configs() -> Unit {
 ///|
 /// Convert one text: `--text` wins over `--input`, and an unknown configuration
 /// or a missing input is a usage error.
+/// Convert every file with the given extension in a directory.
+///
+/// Returns the number of files that could not be converted, so the caller can
+/// decide the exit code.
+fn convert_dir(
+  config_names : Array[String],
+  input_dir : String,
+  output_dir : String,
+  extension : String,
+) -> Int {
+  if output_dir == "" {
+    println("opencc: --input-dir needs --output-dir")
+    @sys.exit(2)
+  }
+  let files = files_with_suffix(input_dir, extension)
+  if files.is_empty() {
+    println("opencc: no " + extension + " files found in " + input_dir)
+    return 1
+  }
+  if !@fs.path_exists(output_dir) {
+    @fs.create_dir(output_dir) catch {
+      _ => ()
+    }
+  }
+  let mut written = 0
+  let mut units_in = 0
+  let mut units_out = 0
+  let mut failures = 0
+  for file in files {
+    let text = read_text(input_dir + "/" + file)
+    match @config.convert_sequence(config_names, text) {
+      None => failures = failures + 1
+      Some(converted) => {
+        write_text(output_dir + "/" + file, converted)
+        written = written + 1
+        units_in = units_in + text.length()
+        units_out = units_out + converted.length()
+      }
+    }
+  }
+  println(
+    "opencc: " +
+    written.to_string() +
+    " file(s) → " +
+    output_dir +
+    " (" +
+    units_in.to_string() +
+    " → " +
+    units_out.to_string() +
+    " code units) via " +
+    config_names.join(" → "),
+  )
+  failures
+}
+
+///|
+/// Convert one text or a whole directory.
+///
+/// Repeated `-c` flags compose in order, the way the upstream CLI does it;
+/// `--input-dir` with `--output-dir` converts every `--ext` file in a directory.
 fn convert_command(
-  config_name : String,
+  config_names : Array[String],
   input_path : String,
   text_arg : String?,
   output_path : String,
+  input_dir : String,
+  output_dir : String,
+  extension : String,
 ) -> Unit {
-  if config_name == "" {
+  if config_names.is_empty() {
     println("opencc: convert needs a configuration, e.g. -c s2t")
     println("opencc: run 'opencc list-configs' to see the built-in names")
     @sys.exit(2)
+  }
+  if input_dir != "" {
+    if convert_dir(config_names, input_dir, output_dir, extension) > 0 {
+      @sys.exit(1)
+    }
+    return
   }
   let text = match text_arg {
     Some(value) => value
@@ -245,9 +314,9 @@ fn convert_command(
         ""
       }
   }
-  match @config.convert(config_name, text) {
+  match @config.convert_sequence(config_names, text) {
     None => {
-      println("opencc: unknown configuration '" + config_name + "'")
+      println("opencc: unknown configuration in " + config_names.join(", "))
       println("opencc: run 'opencc list-configs' to see the built-in names")
       @sys.exit(2)
     }
@@ -343,9 +412,12 @@ fn verify_golden(dir : String) -> Int {
 fn main {
   let args = @env.args()
   let mut command = ""
-  let mut config_name = ""
+  let config_names : Array[String] = []
   let mut input_path = ""
   let mut output_path = ""
+  let mut input_dir = ""
+  let mut output_dir = ""
+  let mut extension = ".txt"
   let mut text_arg : String? = None
   let mut golden = "test/fixtures/golden"
   let mut index = 0
@@ -355,7 +427,7 @@ fn main {
       command = arg
       index = index + 1
     } else if (arg == "-c" || arg == "--config") && index + 1 < args.length() {
-      config_name = args[index + 1]
+      config_names.push(args[index + 1])
       index = index + 2
     } else if (arg == "-i" || arg == "--input") && index + 1 < args.length() {
       input_path = args[index + 1]
@@ -365,6 +437,15 @@ fn main {
       index = index + 2
     } else if (arg == "-t" || arg == "--text") && index + 1 < args.length() {
       text_arg = Some(args[index + 1])
+      index = index + 2
+    } else if arg == "--input-dir" && index + 1 < args.length() {
+      input_dir = args[index + 1]
+      index = index + 2
+    } else if arg == "--output-dir" && index + 1 < args.length() {
+      output_dir = args[index + 1]
+      index = index + 2
+    } else if arg == "--ext" && index + 1 < args.length() {
+      extension = args[index + 1]
       index = index + 2
     } else if arg == "--golden" && index + 1 < args.length() {
       golden = args[index + 1]
@@ -387,10 +468,17 @@ fn main {
   } else if command == "list-configs" {
     list_configs()
   } else if command == "convert" {
-    convert_command(config_name, input_path, text_arg, output_path)
-  } else if config_name != "" || input_path != "" || text_arg is Some(_) {
+    convert_command(
+      config_names, input_path, text_arg, output_path, input_dir, output_dir, extension,
+    )
+  } else if !config_names.is_empty() ||
+    input_path != "" ||
+    input_dir != "" ||
+    text_arg is Some(_) {
     // `opencc -c s2t --text "..."` works without spelling out `convert`.
-    convert_command(config_name, input_path, text_arg, output_path)
+    convert_command(
+      config_names, input_path, text_arg, output_path, input_dir, output_dir, extension,
+    )
   } else {
     println("opencc.mbt 0.1.0 — OpenCC-compatible Chinese script conversion")
     println("")
@@ -400,6 +488,9 @@ fn main {
     println("  opencc list-configs")
     println("  opencc convert -c <config> --input <file> [-o <file>]")
     println("  opencc convert -c <config> --text \"<string>\"")
+    println(
+      "  opencc convert -c <config> [ -c <config> … ] --input-dir <dir> --output-dir <dir> [--ext .txt]",
+    )
     println("  opencc verify [--golden <dir>]")
   }
 }
