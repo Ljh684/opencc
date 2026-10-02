@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+- **已发布**：`Ljh684/opencc` v0.1.0 上线 mooncakes（<https://mooncakes.io/docs/Ljh684/opencc>）。
+  安装路径实测：干净模块里 `moon add Ljh684/opencc` → 下载 → 调用 `config.convert("s2twp", …)`
+  输出 `記憶體洩漏與軟體最佳化`，并报告 19 个配置可用。
 - 网页/Node 演示 `examples/web`：`foreign_library` + `#export_name` 导出
   `opencc_to_taiwan` / `opencc_to_simplified`，附 `demo.mjs` 与 `index.html`。
 - 热路径优化：跳过不可能命中任何词条的连续片段，ASCII 密集文本 4724 → 7503 码元/ms。

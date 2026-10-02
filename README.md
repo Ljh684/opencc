@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/Ljh684/opencc/actions/workflows/ci.yml/badge.svg)](https://github.com/Ljh684/opencc/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Ljh684/opencc)](https://github.com/Ljh684/opencc/releases)
+[![mooncakes](https://img.shields.io/badge/mooncakes-Ljh684%2Fopencc-2b7de9)](https://mooncakes.io/docs/Ljh684/opencc)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 **OpenCC-compatible Chinese script conversion in pure MoonBit — no FFI, no runtime I/O, runs on wasm, wasm-gc, js and native.**
@@ -13,7 +14,7 @@
 ## 安装
 
 ```bash
-moon add Ljh684/opencc              # 发布到 mooncakes 后即可这样引用
+moon add Ljh684/opencc              # 已在 mooncakes 发布：https://mooncakes.io/docs/Ljh684/opencc
 ```
 
 ```moonbit
@@ -240,7 +241,7 @@ docs/                  设计文档与验收标准
 | F7 数据表示 | 内嵌文本块 + 运行时建索引：native 测试 341 s → 7 s，解除 plain wasm 上限 | 已完成 |
 | F8 覆盖与属性测试 | 全量条目属性测试、往返一致性检查、缺失词典台账、行粒度与稳定性属性 | 已完成 |
 | F9 按配置裁剪 | 词典/配置各自成包：t2s 构建 249 KB、s2t 913 KB、全量 CLI 1341 KB（wasm-gc） | 已完成 |
-| F10 发布 | 发布到 mooncakes、GitHub Release 与演示素材 | 下一步 |
+| F10 发布 | 已发布到 mooncakes（`Ljh684/opencc` v0.1.0）、GitHub Release 与演示素材 | 已完成 |
 
 ## 已知限制
 

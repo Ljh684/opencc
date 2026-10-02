@@ -48,6 +48,6 @@
 
 ## 后续计划
 
-1. 发布到 mooncakes（`moon add Ljh684/opencc`）；
-2. 演示素材（README 动图 / 网页 demo）；
+1. ~~发布到 mooncakes~~ **已完成**：`Ljh684/opencc` v0.1.0，`moon add Ljh684/opencc` 可直接安装；
+2. 演示素材：网页 demo 已完成（`examples/web`），README 动图仍有空间；
 3. 继续扩大逐字节证据的覆盖面（更多配置与语料）。

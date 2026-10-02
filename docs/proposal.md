@@ -4,6 +4,7 @@
 | --- | --- |
 | 参赛者 | Ljh684 |
 | 开源仓库 | https://github.com/Ljh684/opencc （公开，Apache-2.0，CI 绿） |
+| 已发布包 | https://mooncakes.io/docs/Ljh684/opencc （`moon add Ljh684/opencc`） |
 | 语言与依赖 | MoonBit；库本身零依赖，命令行 / 生成器 / 基准用官方扩展库 `moonbitlang/x` |
 | 规模 | 手写实现 13 个文件 2779 行，生成数据 44 个文件 80014 行；测试 4 个文件 499 行、38 个测试全部通过 |
 
@@ -22,7 +23,7 @@
 | 19 个配置装配；每个配置单独成包，只链入自己需要的词典（t2s 构建 249 KB） | `config/` | 已完成 |
 | CLI 与库 API：`list-configs` / `convert`（`-c` 可重复串行、`--input-dir` 目录批量）/ `verify`（含往返）；`convert(name, text)` | `cmd/opencc/`、`config/build.mbt` | 已完成 |
 | 官方一致性 5/5 逐字节；38 个测试（含 76099 条词条全量属性测试，以及 19 个配置的回归基线） | `test/fixtures/golden/`、`test/fixtures/regression/`、`*_test.mbt` | 已完成 |
-| 热路径优化（ASCII 密集文本 1.59×）与可在浏览器/Node 直接调用的演示 | `core/match.mbt`、`examples/web/` | 已完成 |
+| 已发布到 mooncakes（v0.1.0，干净模块实测可安装）；热路径优化（ASCII 密集 1.59×）与浏览器/Node 演示 | `moon.mod`、`core/match.mbt`、`examples/web/` | 已完成 |
 
 不在本次范围：中文分词 / 拼音 / 中文数字（生态已有）；OpenCC 的 `staging/` 实验字典与 `*_jieba` 分词变体；标准输入（MoonBit 尚无标准输入 API，加 FFI 会破坏「零 FFI」）。明细见 [README](../README.md)。
 
@@ -59,4 +60,4 @@ MoonBit 开发者，已在 mooncakes.io 发布解析器组合子库 `Ljh684/Moon
 
 ## 八、其他材料
 
-[README](../README.md) · [一页说明](one-pager.md) · [差异对比](comparison.md) · [验收](acceptance.md) · [设计](design.md) · [性能](performance.md) · [Release v0.1.0](https://github.com/Ljh684/opencc/releases/tag/v0.1.0)
+[README](../README.md) · [一页说明](one-pager.md) · [差异对比](comparison.md) · [验收](acceptance.md) · [设计](design.md) · [性能](performance.md) · [mooncakes](https://mooncakes.io/docs/Ljh684/opencc) · [Release v0.1.0](https://github.com/Ljh684/opencc/releases/tag/v0.1.0)
