@@ -13,7 +13,7 @@
 // `verify --report <path>` writes the same results as a document: Markdown for
 // any path, JSON when the path ends in `.json`. The document is deterministic
 // (no timestamps, no run-to-run ordering), so continuous integration can
-// regenerate it and fail on drift 鈥?that is what keeps the committed report and
+// regenerate it and fail on drift - that is what keeps the committed report and
 // the code from disagreeing.
 
 ///|
@@ -467,7 +467,7 @@ fn covered_by_golden(golden : Array[GoldenResult], name : String) -> Bool {
 /// Escape a string for a JSON document.
 ///
 /// Everything the report inserts is an ASCII identifier, path or revision, so
-/// only `"`, `\` and control characters need handling 鈥?but handling them is
+/// only `"`, `\` and control characters need handling - but handling them is
 /// what makes the file parseable by any JSON reader.
 fn json_escape(text : String) -> String {
   let quote : UInt16 = 34
@@ -693,7 +693,7 @@ fn count_source(root : String) -> SourceSize {
 ///|
 /// The verification report as Markdown.
 ///
-/// Deliberately timeless: no date, no host, no durations 鈥?only facts the CLI
+/// Deliberately timeless: no date, no host, no durations - only facts the CLI
 /// recomputes identically on every run, so `git diff --exit-code` in CI can
 /// prove the committed copy still matches the code.
 fn render_report_markdown(
@@ -720,7 +720,7 @@ fn render_report_markdown(
   let out = StringBuilder()
   out.write_string("# Verification report\n\n")
   out.write_string(
-    "Generated 鈥?do not edit by hand. The CLI recomputes every number below\n" +
+    "Generated - do not edit by hand. The CLI recomputes every number below\n" +
     "from the data compiled into this repository, and continuous integration\n" +
     "regenerates this file and fails on any difference, so it cannot go stale:\n\n",
   )

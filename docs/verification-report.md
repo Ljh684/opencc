@@ -1,6 +1,6 @@
 # Verification report
 
-Generated 鈥?do not edit by hand. The CLI recomputes every number below
+Generated - do not edit by hand. The CLI recomputes every number below
 from the data compiled into this repository, and continuous integration
 regenerates this file and fails on any difference, so it cannot go stale:
 
