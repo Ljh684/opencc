@@ -86,6 +86,15 @@ jobs:
         # Native for the same reason: the CLI reads the corpus from disk.
         run: moon run cmd/opencc --target native -- verify --golden test/fixtures/golden
 
+      - name: Verification report is current
+        # `verify --report` is deterministic (no timestamps, no host names), so
+        # the committed report is regenerated here and any drift fails the run.
+        # That is what keeps docs/verification-report.* in step with the code.
+        run: |
+          moon run cmd/opencc --target native -- verify --report docs/verification-report.md
+          moon run cmd/opencc --target native -- verify --report docs/verification-report.json
+          git diff --exit-code docs/verification-report.md docs/verification-report.json
+
       - name: Example builds (size-sensitive consumers)
         run: |
           moon build examples/t2s --target wasm-gc --release

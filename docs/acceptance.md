@@ -18,6 +18,7 @@
 | 数据可审计 | 上游快照带 revision 与逐文件 SHA-256，生成前校验 | `data/opencc/REVISION`、`data/opencc/SHA256SUMS` |
 | 生成代码可复现 | `tools/gen_dict --verify` 在生成结果与仓库不符时退出码 1 | `moon run tools/gen_dict -- --verify` |
 | OpenCC 官方 golden 一致性 | 100% 逐字节通过（5 条链各 1 份期望输出） | `moon run cmd/opencc -- verify` |
+| 结果可核对、不可过期 | `verify --report` 生成覆盖 / 往返 / 数据快照 / 代码规模报告，CI 重新生成后逐字节 diff | `docs/verification-report.md`、`docs/verification-report.json` |
 | CLI 输出逐字节一致 | 文件输出与期望文件字节相同（s2twp：22038 bytes） | `opencc convert -c s2twp --input … --output …` 后比对 |
 | 反方向覆盖（t2s / tw2s / hk2s） | 自建语料 + 词表覆盖率报告 | `reports/coverage.json` |
 | 属性测试 | 分块一致性、非中文不变、幂等性 | `moon test` 中的属性用例 |
@@ -111,3 +112,21 @@ golden result: 5 passed, 0 failed, 5 skipped (unsupported variants)
 | 回归锁 | **全部 19 个配置** | `test/fixtures/regression/` + `regression/` 包的测试；锁行为，不主张正确性 |
 | 数据 | 20 个词典 / 76099 条 | SHA-256 + 重新生成比对 |
 | 属性 | 76099 条词条 | 逐条命中自身 key，另含分词边界、行粒度、稳定性 |
+
+## 可核对报告（2026-10-07）
+
+`opencc verify --report <path>` 把同一批结果落成文档（路径以 `.json` 结尾则出 JSON）：19 个配置
+各自的覆盖状态与缺失词典、5 条正向往返、数据快照（上游 revision、20 个词典 / 76099 条、
+SHA-256 校验方式），以及**代码规模**（手写实现 15 个文件 3559 行、生成数据 42 个文件 79776 行、
+测试 5 个文件 535 行）。
+
+报告不含时间戳、主机名或耗时，是「输入 + 仓库内容」的纯函数，因此 CI 会重新生成
+`docs/verification-report.md` 与 `.json` 并 `git diff --exit-code`：过期即构建失败。赛方要
+核对申报书里的任何数字，跑一条命令就能复现：
+
+```bash
+moon run cmd/opencc --target native -- verify --report docs/verification-report.md
+```
+
+同时 `moon test` 里有一条测试（`cmd/opencc/report_wbtest.mbt`）锁住「报告必须列出全部 19 个
+配置、且两次生成逐字节相同」，避免报告渲染在重构中悄悄退化。

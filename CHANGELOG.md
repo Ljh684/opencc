@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+- **可核对报告**：`opencc verify --report <path>` 把同一批结果落成文档（`.json` 后缀出 JSON）——
+  19 个配置各自的覆盖状态与缺失词典、5 条正向往返、数据快照（revision / 词典数 / 词条数 /
+  SHA-256 校验方式）以及代码规模（手写实现 15 个文件 3559 行、生成数据 42 个文件 79776 行、
+  测试 5 个文件 535 行）。报告不含时间戳，是仓库内容的纯函数，CI 重新生成
+  `docs/verification-report.md` 与 `.json` 后 `git diff --exit-code`，因此申报书里的数字
+  不会与代码脱节；`cmd/opencc/report_wbtest.mbt` 另有一条测试锁住「列全 19 个配置 + 两次生成
+  逐字节相同」。
 - **已发布**：`Ljh684/opencc` v0.1.0 上线 mooncakes（<https://mooncakes.io/docs/Ljh684/opencc>）。
   安装路径实测：干净模块里 `moon add Ljh684/opencc` → 下载 → 调用 `config.convert("s2twp", …)`
   输出 `記憶體洩漏與軟體最佳化`，并报告 19 个配置可用。

@@ -34,7 +34,7 @@ let chain = @s2twp.chain()
 > CLI 与库 API。
 >
 > **官方一致性：5/5 逐字节通过**（`s2t`、`s2hk`、`s2tw`、`s2hkp`、`s2twp`，
-> 用仓库内 `test/fixtures/golden` 语料）。`moon check` 无警告，**38 个测试**通过
+> 用仓库内 `test/fixtures/golden` 语料）。`moon check` 无警告，**39 个测试**通过
 > （含覆盖 76099 条词典条目的全量属性测试，以及 19 个配置的回归基线）。
 > 见下方[路线图](#路线图)。
 
@@ -108,6 +108,10 @@ opencc convert -c s2twp --input-dir corpus --output-dir converted --ext .txt
 
 # 与 OpenCC 官方语料逐字节比对
 opencc verify --golden test/fixtures/golden
+
+# 同一批结果落成报告（Markdown 或 JSON），并附代码规模与数据快照
+opencc verify --report docs/verification-report.md
+opencc verify --report docs/verification-report.json
 ```
 
 ```moonbit
@@ -163,6 +167,7 @@ $ node examples/web/demo.mjs
 | 数据完整性 | 20 个词典 / 76099 条目重新生成后与仓库逐字节一致，SHA-256 全部匹配 | `moon run tools/gen_dict --target native -- --verify` |
 | 属性测试 | 76099 条词条逐条命中自身 key、分词边界、行粒度、二次转换稳定性 | `moon test`（四个后端） |
 | 性能 | 中文密集 / ASCII 密集两个语料的吞吐 | `moon run tools/bench_lookup --target native` |
+| 可核对报告 | 上面几项的结果落成 [docs/verification-report.md](docs/verification-report.md)（19 配置覆盖、往返、数据快照、代码规模），CI 重新生成并逐字节 diff，过期即失败 | `moon run cmd/opencc --target native -- verify --report docs/verification-report.md` |
 
 基线在行为有意变化时才更新：`moon run tools/gen_baseline --target native`，
 理由写进提交信息（见 `test/fixtures/regression/README.md`）。
@@ -249,6 +254,7 @@ docs/                  设计文档与验收标准
 | F8 覆盖与属性测试 | 全量条目属性测试、往返一致性检查、缺失词典台账、行粒度与稳定性属性 | 已完成 |
 | F9 按配置裁剪 | 词典/配置各自成包：t2s 构建 249 KB、s2t 913 KB、全量 CLI 1341 KB（wasm-gc） | 已完成 |
 | F10 发布 | 已发布到 mooncakes（`Ljh684/opencc` v0.1.0）、GitHub Release 与演示素材 | 已完成 |
+| F11 可核对报告 | `verify --report` 生成 `docs/verification-report.md|json`，CI 重新生成后逐字节 diff | 已完成 |
 
 ## 已知限制
 
@@ -262,6 +268,9 @@ docs/                  设计文档与验收标准
   [docs/performance.md](docs/performance.md)）。
 - 反方向配置（`t2s`、`tw2s`、`hk2s`）缺少官方语料可对标，目前只有正向 5 条链的
   逐字节证据；覆盖与属性测试是下一步。
+- `docs/verification-report.*` 是**生成物**：改动任何 `.mbt` 后重新跑一次
+  `moon run cmd/opencc --target native -- verify --report <path>` 即可；忘了重跑时 CI 会在
+  diff 这一步直接失败，因此报告不会与代码不一致。
 
 ## 许可证
 

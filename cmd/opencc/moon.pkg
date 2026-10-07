@@ -1,5 +1,6 @@
 import {
   "Ljh684/opencc/config",
+  "Ljh684/opencc/dict",
   "moonbitlang/core/env",
   "moonbitlang/x/fs",
   "moonbitlang/x/sys",

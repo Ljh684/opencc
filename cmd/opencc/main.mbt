@@ -4,11 +4,17 @@
 //     opencc list-configs
 //     opencc convert -c <config> --input <file> [--output <file>]
 //     opencc convert -c <config> --text "<string>"
-//     opencc verify [--golden <dir>]
+//     opencc verify [--golden <dir>] [--report <path>]
 //
 // When no output file is given the converted text goes to stdout and nothing
 // else is printed, so the command can be redirected. MoonBit's console API only
 // offers `println` (always with a newline); `--output` is the byte-exact path.
+//
+// `verify --report <path>` writes the same results as a document: Markdown for
+// any path, JSON when the path ends in `.json`. The document is deterministic
+// (no timestamps, no run-to-run ordering), so continuous integration can
+// regenerate it and fail on drift 鈥?that is what keeps the committed report and
+// the code from disagreeing.
 
 ///|
 /// Print text to standard output, cancelling the newline `println` adds when the
@@ -128,7 +134,25 @@ fn count_differences(left : String, right : String) -> Int {
 /// complete chain is a genuine regression.
 ///
 /// Returns the number of failures.
-fn verify_round_trips(dir : String, source : String) -> Int {
+/// One configuration's result against the golden corpus.
+struct GoldenResult {
+  name : String
+  passed : Bool
+  missing : Array[String]
+}
+
+///|
+/// One reverse-direction round-trip result.
+struct RoundTripResult {
+  pair : String
+  identical : Bool
+  differences : Int
+  missing : Array[String]
+}
+
+///|
+/// Convert each golden output back with its reverse configuration and report.
+fn verify_round_trips(dir : String, source : String) -> Array[RoundTripResult] {
   let pairs = [
     ("s2t", "t2s"),
     ("s2tw", "tw2s"),
@@ -136,7 +160,7 @@ fn verify_round_trips(dir : String, source : String) -> Int {
     ("s2hk", "hk2s"),
     ("s2hkp", "hk2sp"),
   ]
-  let mut failures = 0
+  let results : Array[RoundTripResult] = []
   for pair in pairs {
     let forward = pair.0
     let backward = pair.1
@@ -149,35 +173,34 @@ fn verify_round_trips(dir : String, source : String) -> Int {
       Some(chain) => {
         let back = chain.apply(read_text(path))
         let name = forward + " -> " + backward
-        if back == source {
+        let identical = back == source
+        let differences = count_differences(back, source)
+        let missing = @config.missing_dictionaries(backward)
+        if identical {
           println("  ok   " + name + "  identical to the source text")
+        } else if missing.is_empty() {
+          println(
+            "  FAIL " +
+            name +
+            "  " +
+            differences.to_string() +
+            " differing code units, but the reverse chain is complete",
+          )
         } else {
-          let missing = @config.missing_dictionaries(backward)
-          let differences = count_differences(back, source)
-          if missing.is_empty() {
-            failures = failures + 1
-            println(
-              "  FAIL " +
-              name +
-              "  " +
-              differences.to_string() +
-              " differing code units, but the reverse chain is complete",
-            )
-          } else {
-            println(
-              "  note " +
-              name +
-              "  " +
-              differences.to_string() +
-              " differing code units; missing: " +
-              missing.join(", "),
-            )
-          }
+          println(
+            "  note " +
+            name +
+            "  " +
+            differences.to_string() +
+            " differing code units; missing: " +
+            missing.join(", "),
+          )
         }
+        results.push({ pair: name, identical, differences, missing, })
       }
     }
   }
-  failures
+  results
 }
 
 ///|
@@ -343,7 +366,7 @@ fn convert_command(
 /// Verify every covered configuration against the golden corpus.
 ///
 /// Returns the number of failures, so `main` can decide the exit code.
-fn verify_golden(dir : String) -> Int {
+fn verify_golden(dir : String, report_path : String) -> Int {
   let input_path = dir + "/input/us_constitution_zhs.txt"
   let input = read_text(input_path)
   println(
@@ -353,6 +376,7 @@ fn verify_golden(dir : String) -> Int {
     input.length().to_string() +
     " code units)",
   )
+  let golden : Array[GoldenResult] = []
   let mut passed = 0
   let mut failed = 0
   let mut skipped = 0
@@ -364,6 +388,7 @@ fn verify_golden(dir : String) -> Int {
           None => {
             println("  FAIL " + name + "  (unknown configuration)")
             failed = failed + 1
+            golden.push({ name, passed: false, missing: [], })
           }
           Some(chain) => {
             let expected = read_text(dir + "/output/" + file)
@@ -377,8 +402,10 @@ fn verify_golden(dir : String) -> Int {
             if actual == expected {
               passed = passed + 1
               println("  ok   " + name + note)
+              golden.push({ name, passed: true, missing, })
             } else {
               failed = failed + 1
+              golden.push({ name, passed: false, missing, })
               let offset = first_difference(actual, expected)
               println("  FAIL " + name + note)
               println(
@@ -404,7 +431,580 @@ fn verify_golden(dir : String) -> Int {
     " skipped (unsupported variants)",
   )
   println("round-trip    :")
-  failed + verify_round_trips(dir, input)
+  let trips = verify_round_trips(dir, input)
+  let mut trip_failures = 0
+  for trip in trips {
+    if !trip.identical && trip.missing.is_empty() {
+      trip_failures = trip_failures + 1
+    }
+  }
+  let failures = failed + trip_failures
+  if report_path != "" {
+    let size = count_source(repository_root(dir))
+    let report = if report_path.has_suffix(".json") {
+      render_report_json(input.length(), golden, trips, skipped, size)
+    } else {
+      render_report_markdown(input.length(), golden, trips, skipped, size)
+    }
+    write_text(report_path, report)
+    println("report        : " + report_path + " written")
+  }
+  failures
+}
+
+///|
+/// Whether the golden corpus covers a configuration.
+fn covered_by_golden(golden : Array[GoldenResult], name : String) -> Bool {
+  for entry in golden {
+    if entry.name == name {
+      return true
+    }
+  }
+  false
+}
+
+///|
+/// Escape a string for a JSON document.
+///
+/// Everything the report inserts is an ASCII identifier, path or revision, so
+/// only `"`, `\` and control characters need handling 鈥?but handling them is
+/// what makes the file parseable by any JSON reader.
+fn json_escape(text : String) -> String {
+  let quote : UInt16 = 34
+  let backslash : UInt16 = 92
+  let out = StringBuilder()
+  let mut index = 0
+  while index < text.length() {
+    let unit = text.unsafe_get(index)
+    if unit == quote {
+      out.write_string("\\\"")
+    } else if unit == backslash {
+      out.write_string("\\\\")
+    } else if unit < 32 {
+      out.write_string("\\u")
+      out.write_string(hex4(unit))
+    } else {
+      out.write_substring(text, index, 1)
+    }
+    index = index + 1
+  }
+  out.to_string()
+}
+
+///|
+/// The four-digit `\uXXXX` form of a code unit.
+fn hex4(unit : UInt16) -> String {
+  let digits = "0123456789abcdef"
+  let value = unit.to_int()
+  let out = StringBuilder()
+  for shift in [12, 8, 4, 0] {
+    out.write_substring(digits, value / (1 << shift) % 16, 1)
+  }
+  out.to_string()
+}
+
+///|
+/// `["a", "b"]`, or `[]` when the list is empty.
+fn json_string_array(items : Array[String]) -> String {
+  let out = StringBuilder()
+  out.write_string("[")
+  let mut index = 0
+  for item in items {
+    if index > 0 {
+      out.write_string(", ")
+    }
+    out.write_string("\"")
+    out.write_string(json_escape(item))
+    out.write_string("\"")
+    index = index + 1
+  }
+  out.write_string("]")
+  out.to_string()
+}
+
+///|
+/// Dictionary names for a report cell, or `-` when nothing is missing.
+fn missing_note(items : Array[String]) -> String {
+  if items.is_empty() {
+    "-"
+  } else {
+    items.join(", ")
+  }
+}
+
+///|
+/// Total entries across the compiled dictionaries and how many of the
+/// dictionaries are derived at build time.
+fn snapshot_totals() -> (Int, Int) {
+  let mut entries = 0
+  let mut derived = 0
+  for source in @dict.sources {
+    entries = entries + source.entries
+    if source.derived {
+      derived = derived + 1
+    }
+  }
+  (entries, derived)
+}
+
+///|
+/// Size of the repository, in the three groups the proposal quotes.
+///
+/// Counting from the checkout (instead of quoting numbers by hand) is what
+/// keeps the figures in the write-up from drifting away from the code.
+struct SourceSize {
+  implementation_files : Int
+  implementation_lines : Int
+  generated_files : Int
+  generated_lines : Int
+  test_files : Int
+  test_lines : Int
+}
+
+///|
+/// The checkout root implied by a golden directory, e.g. `test/fixtures/golden`
+/// is three levels below the root. Falls back to the working directory.
+fn repository_root(golden_dir : String) -> String {
+  let parts = golden_dir.replace_all(old="\\", new="/").split("/")
+  let kept : Array[StringView] = []
+  for part in parts {
+    if part.length() > 0 {
+      kept.push(part)
+    }
+  }
+  if kept.length() <= 3 {
+    return "."
+  }
+  let out = StringBuilder()
+  let mut index = 0
+  while index < kept.length() - 3 {
+    if index > 0 {
+      out.write_string("/")
+    }
+    out.write_string(kept[index].to_owned())
+    index = index + 1
+  }
+  out.to_string()
+}
+
+///|
+/// Every `.mbt` file under the checkout, as a path relative to it.
+///
+/// Names starting with `.` or `_` are skipped: those are exactly the ignored
+/// directories (`_build`, `.mooncakes`), so the count describes the repository
+/// and not its build output.
+fn mbt_files_under(root : String) -> Array[String] {
+  let files : Array[String] = []
+  collect_mbt(root, "", files)
+  files.sort()
+  files
+}
+
+///|
+/// Recursive half of `mbt_files_under`.
+fn collect_mbt(
+  dir : String,
+  prefix : String,
+  accumulator : Array[String],
+) -> Unit {
+  let entries = @fs.read_dir(dir) catch { _ => [] }
+  for name in entries {
+    if name.length() == 0 {
+      continue
+    }
+    let first = name.unsafe_get(0)
+    if first == 46 || first == 95 {
+      continue
+    }
+    let path = if dir == "." { name } else { dir + "/" + name }
+    let relative = if prefix == "" { name } else { prefix + "/" + name }
+    let is_directory = @fs.is_dir(path) catch { _ => false }
+    if is_directory {
+      collect_mbt(path, relative, accumulator)
+    } else if name.has_suffix(".mbt") {
+      accumulator.push(relative)
+    }
+  }
+}
+
+///|
+/// Newline-terminated line count of a file, or 0 when it cannot be read.
+fn count_lines(path : String) -> Int {
+  let text = @fs.read_file_to_string(path) catch { _ => "" }
+  let mut lines = 0
+  let mut index = 0
+  while index < text.length() {
+    if text.unsafe_get(index) == 10 {
+      lines = lines + 1
+    }
+    index = index + 1
+  }
+  lines
+}
+
+///|
+/// A test file, in any of MoonBit's three test flavours.
+fn is_test_path(relative : String) -> Bool {
+  relative.has_suffix("_test.mbt") || relative.has_suffix("_wbtest.mbt")
+}
+
+///|
+/// A generated file: the compiled dictionaries and the assembly of the 19
+/// configurations, all produced by `tools/gen_dict`.
+fn is_generated_path(relative : String) -> Bool {
+  relative.has_prefix("dict/") ||
+  relative == "config/chains.mbt" ||
+  (relative.has_prefix("config/") && relative.has_suffix("/chain.mbt"))
+}
+
+///|
+/// Measure the checkout: hand-written implementation, generated data and tests.
+fn count_source(root : String) -> SourceSize {
+  let mut implementation_files = 0
+  let mut implementation_lines = 0
+  let mut generated_files = 0
+  let mut generated_lines = 0
+  let mut test_files = 0
+  let mut test_lines = 0
+  for relative in mbt_files_under(root) {
+    let path = if root == "." { relative } else { root + "/" + relative }
+    let lines = count_lines(path)
+    if is_test_path(relative) {
+      test_files = test_files + 1
+      test_lines = test_lines + lines
+    } else if is_generated_path(relative) {
+      generated_files = generated_files + 1
+      generated_lines = generated_lines + lines
+    } else {
+      implementation_files = implementation_files + 1
+      implementation_lines = implementation_lines + lines
+    }
+  }
+  {
+    implementation_files,
+    implementation_lines,
+    generated_files,
+    generated_lines,
+    test_files,
+    test_lines,
+  }
+}
+
+///|
+/// The verification report as Markdown.
+///
+/// Deliberately timeless: no date, no host, no durations 鈥?only facts the CLI
+/// recomputes identically on every run, so `git diff --exit-code` in CI can
+/// prove the committed copy still matches the code.
+fn render_report_markdown(
+  input_units : Int,
+  golden : Array[GoldenResult],
+  trips : Array[RoundTripResult],
+  skipped : Int,
+  size : SourceSize,
+) -> String {
+  let (entries, derived) = snapshot_totals()
+  let names = @config.chain_names()
+  let mut passed = 0
+  let mut uncovered = 0
+  for entry in golden {
+    if entry.passed {
+      passed = passed + 1
+    }
+  }
+  for name in names {
+    if !covered_by_golden(golden, name) {
+      uncovered = uncovered + 1
+    }
+  }
+  let out = StringBuilder()
+  out.write_string("# Verification report\n\n")
+  out.write_string(
+    "Generated 鈥?do not edit by hand. The CLI recomputes every number below\n" +
+    "from the data compiled into this repository, and continuous integration\n" +
+    "regenerates this file and fails on any difference, so it cannot go stale:\n\n",
+  )
+  out.write_string(
+    "    moon run cmd/opencc --target native -- verify --report docs/verification-report.md\n\n",
+  )
+  out.write_string("## Golden corpus\n\n")
+  out.write_string(
+    "OpenCC ships expected output for a handful of configurations. The CLI\n" +
+    "converts the source text with each one and compares byte for byte.\n" +
+    "Source file: `test/fixtures/golden/input/us_constitution_zhs.txt` (" +
+    input_units.to_string() +
+    " code units).\n\n",
+  )
+  out.write_string("| configuration | result | missing dictionaries |\n")
+  out.write_string("| --- | --- | --- |\n")
+  for entry in golden {
+    let result = if entry.passed { "pass" } else { "**fail**" }
+    out.write_string(
+      "| `" +
+      entry.name +
+      "` | " +
+      result +
+      " | " +
+      missing_note(entry.missing) +
+      " |\n",
+    )
+  }
+  out.write_string(
+    "\n" +
+    passed.to_string() +
+    " passed, " +
+    (golden.length() - passed).to_string() +
+    " failed; " +
+    skipped.to_string() +
+    " `*_jieba` variant(s) skipped (word segmentation is a non-goal, see docs/design.md).\n\n",
+  )
+  out.write_string("## Round trip\n\n")
+  out.write_string(
+    "Every golden output is converted back with its reverse configuration and\n" +
+    "compared with the source text, byte for byte. `note` means the reverse chain\n" +
+    "is incomplete in this snapshot, so the pair is reported rather than claimed.\n\n",
+  )
+  out.write_string(
+    "| direction | result | differing code units | missing dictionaries |\n",
+  )
+  out.write_string("| --- | --- | --- | --- |\n")
+  for trip in trips {
+    let result = if trip.identical {
+      "identical"
+    } else if trip.missing.is_empty() {
+      "**FAIL**"
+    } else {
+      "note"
+    }
+    out.write_string(
+      "| `" +
+      trip.pair +
+      "` | " +
+      result +
+      " | " +
+      trip.differences.to_string() +
+      " | " +
+      missing_note(trip.missing) +
+      " |\n",
+    )
+  }
+  out.write_string("\n## Configurations\n\n")
+  out.write_string(
+    "All " +
+    names.length().to_string() +
+    " built-in configurations. `not covered` means upstream ships no golden\n" +
+    "output for it, so this project does not claim byte-exactness for it;\n" +
+    "`missing dictionaries` lists dictionaries the pinned snapshot does not ship\n" +
+    "(upstream OpenCC generates them during its own build), which the runtime\n" +
+    "skips instead of failing the whole chain.\n\n",
+  )
+  out.write_string("| configuration | golden corpus | missing dictionaries |\n")
+  out.write_string("| --- | --- | --- |\n")
+  for name in names {
+    let coverage = if covered_by_golden(golden, name) {
+      "covered"
+    } else {
+      "not covered"
+    }
+    out.write_string(
+      "| `" +
+      name +
+      "` | " +
+      coverage +
+      " | " +
+      missing_note(@config.missing_dictionaries(name)) +
+      " |\n",
+    )
+  }
+  out.write_string(
+    "\n" +
+    covered_by_golden_count(golden, names).to_string() +
+    " covered, " +
+    uncovered.to_string() +
+    " not covered.\n\n",
+  )
+  out.write_string("## Data snapshot\n\n")
+  out.write_string("| field | value |\n")
+  out.write_string("| --- | --- |\n")
+  out.write_string("| repository | " + @dict.upstream_repository + " |\n")
+  out.write_string("| revision | " + @dict.upstream_revision + " |\n")
+  out.write_string(
+    "| dictionaries | " +
+    @dict.sources.length().to_string() +
+    " (" +
+    (@dict.sources.length() - derived).to_string() +
+    " upstream files, " +
+    derived.to_string() +
+    " derived) |\n",
+  )
+  out.write_string("| entries | " + entries.to_string() + " |\n")
+  out.write_string(
+    "| verification | SHA-256 of every source file, re-checked by `moon run tools/gen_dict --target native -- --verify` |\n",
+  )
+  out.write_string("\n## Source size\n\n")
+  out.write_string(
+    "Counted by walking the checkout's `.mbt` files (build output and installed\n" +
+    "dependencies are skipped), so the figures quoted in the write-up are checked\n" +
+    "here instead of being maintained by hand.\n\n",
+  )
+  out.write_string("| group | files | lines |\n")
+  out.write_string("| --- | --- | --- |\n")
+  out.write_string(
+    "| hand-written implementation | " +
+    size.implementation_files.to_string() +
+    " | " +
+    size.implementation_lines.to_string() +
+    " |\n",
+  )
+  out.write_string(
+    "| generated data | " +
+    size.generated_files.to_string() +
+    " | " +
+    size.generated_lines.to_string() +
+    " |\n",
+  )
+  out.write_string(
+    "| tests | " +
+    size.test_files.to_string() +
+    " | " +
+    size.test_lines.to_string() +
+    " |\n",
+  )
+  out.to_string()
+}
+
+///|
+/// How many configurations the golden corpus covers.
+fn covered_by_golden_count(
+  golden : Array[GoldenResult],
+  names : Array[String],
+) -> Int {
+  let mut count = 0
+  for name in names {
+    if covered_by_golden(golden, name) {
+      count = count + 1
+    }
+  }
+  count
+}
+
+///|
+/// The same report as JSON, for dashboards and scripts.
+fn render_report_json(
+  input_units : Int,
+  golden : Array[GoldenResult],
+  trips : Array[RoundTripResult],
+  skipped : Int,
+  size : SourceSize,
+) -> String {
+  let (entries, derived) = snapshot_totals()
+  let names = @config.chain_names()
+  let out = StringBuilder()
+  out.write_string("{\n")
+  out.write_string("  \"input_units\": " + input_units.to_string() + ",\n")
+  out.write_string("  \"golden\": [\n")
+  let mut index = 0
+  for entry in golden {
+    let result = if entry.passed { "pass" } else { "fail" }
+    out.write_string(
+      "    {\"configuration\": \"" +
+      json_escape(entry.name) +
+      "\", \"result\": \"" +
+      result +
+      "\", \"missing\": " +
+      json_string_array(entry.missing) +
+      "}",
+    )
+    index = index + 1
+    if index < golden.length() {
+      out.write_string(",")
+    }
+    out.write_string("\n")
+  }
+  out.write_string("  ],\n")
+  out.write_string("  \"golden_skipped\": " + skipped.to_string() + ",\n")
+  out.write_string("  \"chains\": [\n")
+  index = 0
+  for name in names {
+    out.write_string(
+      "    {\"configuration\": \"" +
+      json_escape(name) +
+      "\", \"golden\": " +
+      (if covered_by_golden(golden, name) { "true" } else { "false" }) +
+      ", \"missing_required\": " +
+      json_string_array(@config.missing_dictionaries(name)) +
+      "}",
+    )
+    index = index + 1
+    if index < names.length() {
+      out.write_string(",")
+    }
+    out.write_string("\n")
+  }
+  out.write_string("  ],\n")
+  out.write_string("  \"round_trips\": [\n")
+  index = 0
+  for trip in trips {
+    let result = if trip.identical {
+      "identical"
+    } else if trip.missing.is_empty() {
+      "fail"
+    } else {
+      "note"
+    }
+    out.write_string(
+      "    {\"pair\": \"" +
+      json_escape(trip.pair) +
+      "\", \"result\": \"" +
+      result +
+      "\", \"differences\": " +
+      trip.differences.to_string() +
+      ", \"missing\": " +
+      json_string_array(trip.missing) +
+      "}",
+    )
+    index = index + 1
+    if index < trips.length() {
+      out.write_string(",")
+    }
+    out.write_string("\n")
+  }
+  out.write_string("  ],\n")
+  out.write_string("  \"data\": {\n")
+  out.write_string(
+    "    \"repository\": \"" + json_escape(@dict.upstream_repository) + "\",\n",
+  )
+  out.write_string(
+    "    \"revision\": \"" + json_escape(@dict.upstream_revision) + "\",\n",
+  )
+  out.write_string(
+    "    \"dictionaries\": " + @dict.sources.length().to_string() + ",\n",
+  )
+  out.write_string("    \"entries\": " + entries.to_string() + ",\n")
+  out.write_string("    \"derived\": " + derived.to_string() + "\n")
+  out.write_string("  },\n")
+  out.write_string("  \"source\": {\n")
+  out.write_string(
+    "    \"implementation_files\": " +
+    size.implementation_files.to_string() +
+    ",\n",
+  )
+  out.write_string(
+    "    \"implementation_lines\": " +
+    size.implementation_lines.to_string() +
+    ",\n",
+  )
+  out.write_string(
+    "    \"generated_files\": " + size.generated_files.to_string() + ",\n",
+  )
+  out.write_string(
+    "    \"generated_lines\": " + size.generated_lines.to_string() + ",\n",
+  )
+  out.write_string("    \"test_files\": " + size.test_files.to_string() + ",\n")
+  out.write_string("    \"test_lines\": " + size.test_lines.to_string() + "\n")
+  out.write_string("  }\n")
+  out.write_string("}\n")
+  out.to_string()
 }
 
 ///|
@@ -420,6 +1020,7 @@ fn main {
   let mut extension = ".txt"
   let mut text_arg : String? = None
   let mut golden = "test/fixtures/golden"
+  let mut report_path = ""
   let mut index = 0
   while index < args.length() {
     let arg = args[index]
@@ -450,6 +1051,9 @@ fn main {
     } else if arg == "--golden" && index + 1 < args.length() {
       golden = args[index + 1]
       index = index + 2
+    } else if arg == "--report" && index + 1 < args.length() {
+      report_path = args[index + 1]
+      index = index + 2
     } else if !arg.has_prefix("-") && input_path == "" {
       // A bare path is the input file, like the original CLI.
       input_path = arg
@@ -462,7 +1066,7 @@ fn main {
   }
 
   if command == "verify" {
-    if verify_golden(golden) > 0 {
+    if verify_golden(golden, report_path) > 0 {
       @sys.exit(1)
     }
   } else if command == "list-configs" {
@@ -491,6 +1095,6 @@ fn main {
     println(
       "  opencc convert -c <config> [ -c <config> … ] --input-dir <dir> --output-dir <dir> [--ext .txt]",
     )
-    println("  opencc verify [--golden <dir>]")
+    println("  opencc verify [--golden <dir>] [--report <path>]")
   }
 }
