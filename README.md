@@ -237,7 +237,7 @@ docs/                  设计文档与验收标准
 ### 发布新版本
 
 改 `moon.mod` 里的 `version`，然后 `moon publish`（需要先 `moon login`）。
-已发布版本：[`Ljh684/opencc` v0.1.0](https://mooncakes.io/docs/Ljh684/opencc)；
+已发布版本：[`Ljh684/opencc` v0.1.1](https://mooncakes.io/docs/Ljh684/opencc)；
 发布前建议先跑 `moon test --target native`、`opencc verify` 与 `gen_dict --verify`，
 这三条分别覆盖正确性、往返与数据完整性。
 
@@ -259,7 +259,7 @@ docs/                  设计文档与验收标准
 | F7 数据表示 | 内嵌文本块 + 运行时建索引：native 测试 341 s → 7 s，解除 plain wasm 上限 | 已完成 |
 | F8 覆盖与属性测试 | 全量条目属性测试、往返一致性检查、缺失词典台账、行粒度与稳定性属性 | 已完成 |
 | F9 按配置裁剪 | 词典/配置各自成包：t2s 构建 259 KB、s2t 914 KB、全量 CLI 1622 KB（wasm-gc） | 已完成 |
-| F10 发布 | 已发布到 mooncakes（`Ljh684/opencc` v0.1.0）、GitHub Release 与演示素材 | 已完成 |
+| F10 发布 | 已发布到 mooncakes（`Ljh684/opencc` v0.1.1）、GitHub Release 与演示素材 | 已完成 |
 | F11 可核对报告 | `verify --report` 生成 `docs/verification-report.md|json`，CI 重新生成后逐字节 diff | 已完成 |
 | F12 补齐派生词典 | 复刻 OpenCC 构建期生成的 6 个派生词典（`*Rev`、`TSCharactersExt`、地区词组投影），19 个配置再没有缺失的 pass | 已完成 |
 | F13 官方 testcases | 官方 testcases 语料入库并在 `verify` 中逐条比对：19 个配置、262 例 / 583 条期望全部复现 | 已完成 |

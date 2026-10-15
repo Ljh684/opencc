@@ -2,7 +2,7 @@
 
 本项目按功能推进，每个功能一个提交；这里记录对外可见的变化。
 
-## Unreleased
+## 0.1.1 — 2026-10-16
 
 - **补齐派生词典**：按上游脚本（`data/scripts/reverse.py`、`extract_tofu_risk.py`）在
   MoonBit 中复刻 OpenCC 构建期生成的 6 个词典——`TWVariantsRev`、`HKVariantsRev`、
@@ -23,18 +23,14 @@
   CI 步骤相应更名。
 - **可核对报告**：`opencc verify --report <path>` 把同一批结果落成文档（`.json` 后缀出 JSON）——
   19 个配置各自的覆盖状态与缺失词典、5 条正向往返、数据快照（revision / 词典数 / 词条数 /
-  SHA-256 校验方式）以及代码规模（手写实现 15 个文件 3559 行、生成数据 42 个文件 79776 行、
-  测试 5 个文件 535 行）。报告不含时间戳，是仓库内容的纯函数，CI 重新生成
+  SHA-256 校验方式）以及代码规模（手写实现 15 个文件 4196 行、生成数据 48 个文件 93671 行、
+  测试 6 个文件 682 行）。报告不含时间戳，是仓库内容的纯函数，CI 重新生成
   `docs/verification-report.md` 与 `.json` 后 `git diff --exit-code`，因此申报书里的数字
   不会与代码脱节；`cmd/opencc/report_wbtest.mbt` 另有一条测试锁住「列全 19 个配置 + 两次生成
   逐字节相同」。
-- **已发布**：`Ljh684/opencc` v0.1.0 上线 mooncakes（<https://mooncakes.io/docs/Ljh684/opencc>）。
-  安装路径实测：干净模块里 `moon add Ljh684/opencc` → 下载 → 调用 `config.convert("s2twp", …)`
-  输出 `記憶體洩漏與軟體最佳化`，并报告 19 个配置可用。
 - 网页/Node 演示 `examples/web`：`foreign_library` + `#export_name` 导出
   `opencc_to_taiwan` / `opencc_to_simplified`，附 `demo.mjs` 与 `index.html`。
 - 热路径优化：跳过不可能命中任何词条的连续片段，ASCII 密集文本 4724 → 7503 码元/ms。
-- GitHub Release [v0.1.0](https://github.com/Ljh684/opencc/releases/tag/v0.1.0)。
 - CI 修复并转绿：安装脚本的两个主机都试、下载失败不再伪装成成功、干净 runner 上先
   `moon update` 建注册表索引；读文件的步骤显式用 `--target native`；两个 job 合并为一次
   工具链下载。仓库首页现在显示绿色 CI 徽章。
@@ -45,6 +41,13 @@
   配套工具 `tools/gen_baseline`（`--verify` 供 CI 使用）。
 
 ## 0.1.0 — 2026-09-24 起
+
+### 发布
+
+- **已发布**：`Ljh684/opencc` v0.1.0 上线 mooncakes（<https://mooncakes.io/docs/Ljh684/opencc>）。
+  安装路径实测：干净模块里 `moon add Ljh684/opencc` → 下载 → 调用 `config.convert("s2twp", …)`
+  输出 `記憶體洩漏與軟體最佳化`，并报告 19 个配置可用。
+- GitHub Release [v0.1.0](https://github.com/Ljh684/opencc/releases/tag/v0.1.0)。
 
 ### 新增
 

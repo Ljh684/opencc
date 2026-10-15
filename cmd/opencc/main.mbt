@@ -1372,7 +1372,7 @@ fn main {
       config_names, input_path, text_arg, output_path, input_dir, output_dir, extension,
     )
   } else {
-    println("opencc.mbt 0.1.0 — OpenCC-compatible Chinese script conversion")
+    println("opencc.mbt 0.1.1 — OpenCC-compatible Chinese script conversion")
     println("")
     list_configs()
     println("")

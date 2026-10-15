@@ -25,7 +25,7 @@
 | 官方一致性：golden 语料 5/5 逐字节，testcases 语料 583/583 逐字节（19 个配置、262 例）；50 个测试（含 89817 条词条全量属性测试与 19 个配置的回归基线） | `test/fixtures/golden/`、`data/opencc/testcases/`、`test/fixtures/regression/`、`*_test.mbt` | 已完成 |
 | 代理对缺陷修复：基本平面以外的字符不再被吞（官方 `seal2t`、`t2s` 用例暴露），补 4 条回归测试 | `core/match.mbt`、`core/astral_wbtest.mbt` | 已完成 |
 | 可核对报告：`verify --report` 把 19 个配置的覆盖状态、往返、数据快照与代码规模落成 Markdown 或 JSON；CI 重新生成后逐字节 diff，过期即失败 | `docs/verification-report.md`、`docs/verification-report.json` | 已完成 |
-| 已发布到 mooncakes（v0.1.0，干净模块实测可安装）；热路径优化（ASCII 密集 1.59×）与浏览器/Node 演示 | `moon.mod`、`core/match.mbt`、`examples/web/` | 已完成 |
+| 已发布到 mooncakes（v0.1.1，干净模块实测可安装）；热路径优化（ASCII 密集 1.59×）与浏览器/Node 演示 | `moon.mod`、`core/match.mbt`、`examples/web/` | 已完成 |
 
 不在本次范围：中文分词 / 拼音 / 中文数字（生态已有）；OpenCC 的 `staging/` 实验字典与 `*_jieba` 分词变体；标准输入（MoonBit 尚无标准输入 API，加 FFI 会破坏「零 FFI」）。明细见 [README](../README.md)。
 
@@ -64,4 +64,4 @@ MoonBit 开发者，已在 mooncakes.io 发布解析器组合子库 `Ljh684/Moon
 
 ## 八、其他材料
 
-[README](../README.md) · [验收报告](verification-report.md) · [一页说明](one-pager.md) · [差异对比](comparison.md) · [验收](acceptance.md) · [设计](design.md) · [性能](performance.md) · [mooncakes](https://mooncakes.io/docs/Ljh684/opencc) · [Release v0.1.0](https://github.com/Ljh684/opencc/releases/tag/v0.1.0)
+[README](../README.md) · [验收报告](verification-report.md) · [一页说明](one-pager.md) · [差异对比](comparison.md) · [验收](acceptance.md) · [设计](design.md) · [性能](performance.md) · [mooncakes](https://mooncakes.io/docs/Ljh684/opencc) · [Release v0.1.1](https://github.com/Ljh684/opencc/releases/tag/v0.1.1)
