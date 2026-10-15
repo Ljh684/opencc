@@ -14,8 +14,7 @@ let st_phrases_generated_from_regional_phrases_chunk_0 : String =
   #|# License: Apache-2.0 (see LICENSE)
   #|# Source: derived by tools/gen_dict — keys of HKPhrases.txt and TWPhrases.txt converted with t2s.json
   #|#
-  #|# This derived dictionary preserves Simplified-input spans before applying
-  #|# regional phrase vocabulary.
+  #|# Regenerate with: moon run tools/gen_dict --target native
   #|
   #|PN结	PN結
   #|SQL注入	SQL注入

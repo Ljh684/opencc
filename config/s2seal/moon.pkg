@@ -12,6 +12,7 @@ import {
   "Ljh684/opencc/dict/st_phrases_generated_from_regional_phrases",
   "Ljh684/opencc/dict/st_characters",
   "Ljh684/opencc/dict/seal_variants",
+  "Ljh684/opencc/dict/seal_characters_rev",
 }
 
 formatter(ignore: [ "chain.mbt" ])

@@ -8,6 +8,7 @@
 import {
   "Ljh684/opencc/core",
   "Ljh684/opencc/dict/cjk_compatibility_ideographs",
+  "Ljh684/opencc/dict/jp_shinjitai_characters_rev",
 }
 
 formatter(ignore: [ "chain.mbt" ])

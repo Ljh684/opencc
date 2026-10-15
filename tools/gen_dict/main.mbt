@@ -251,6 +251,58 @@ fn emit_manifest(
 }
 
 ///|
+/// Register one derived dictionary: write its auditable text, its module, and
+/// its manifest row. The three accumulators belong to the caller.
+///
+/// Returns how many problems were found and how many entries the dictionary
+/// holds, so the caller can keep its totals straight.
+fn emit_derived_dictionary(
+  out_dir : String,
+  derived_dir : String,
+  file_name : String,
+  source_note : String,
+  entries : Array[(String, String)],
+  verify : Bool,
+  bindings : Array[String],
+  rows : Array[String],
+) -> (Int, Int) {
+  let binding = module_name(file_name)
+  let text = render_derived(file_name, source_note, entries)
+  let mut problems = 0
+  if !verify {
+    ensure_dir(derived_dir)
+    ensure_dir(out_dir + "/" + binding)
+  }
+  problems = problems + sync_file(derived_dir + "/" + file_name, text, verify)
+  bindings.push(binding)
+  problems = problems +
+    sync_file(
+      out_dir + "/" + binding + "/data.mbt",
+      emit_dict_data(binding, derived_dir + "/" + file_name, text),
+      verify,
+    )
+  problems = problems +
+    sync_pkg(
+      out_dir + "/" + binding + "/moon.pkg",
+      emit_dict_subpkg(),
+      ["data.mbt"],
+      verify,
+    )
+  rows.push(
+    "  { binding: \"" +
+    binding +
+    "\", file: \"derived/" +
+    file_name +
+    "\", entries: " +
+    entries.length().to_string() +
+    ", sha256: \"" +
+    sha256_of_text(text) +
+    "\", derived: true },\n",
+  )
+  (problems, entries.length())
+}
+
+///|
 /// Entry point.
 fn main {
   let args = @env.args()
@@ -307,20 +359,32 @@ fn main {
   let mut problems = 0
   let mut total_entries = 0
 
+  // Verify every file the snapshot records, not only the dictionaries: the
+  // conversion configurations and the official test cases are inputs to this
+  // project too, and a snapshot that disagrees with its own manifest must fail
+  // before anything is generated from it.
+  for entry in checksums.iter() {
+    let rel = entry.0
+    if !@fs.path_exists(input + "/" + rel) {
+      println("gen_dict: " + rel + " is recorded in SHA256SUMS but missing")
+      problems = problems + 1
+      continue
+    }
+    if sha256_hex(read_bytes(input + "/" + rel)) != entry.1 {
+      println("gen_dict: checksum mismatch for " + rel)
+      problems = problems + 1
+    }
+  }
+
   for file in files {
     let path = dict_dir + "/" + file
     let digest = sha256_hex(read_bytes(path))
     let rel = "dictionary/" + file
-    match checksums.get(rel) {
-      Some(expected) =>
-        if expected != digest {
-          println("gen_dict: checksum mismatch for " + rel)
-          problems = problems + 1
-        }
-      None => {
-        println("gen_dict: no checksum recorded for " + rel)
-        problems = problems + 1
-      }
+    // The digest is checked above, in the pass over SHA256SUMS; here we only
+    // insist that the file is recorded at all.
+    if !checksums.contains(rel) {
+      println("gen_dict: no checksum recorded for " + rel)
+      problems = problems + 1
     }
 
     let text = read_text(path)
@@ -387,8 +451,64 @@ fn main {
   // Derived dictionaries: OpenCC builds `STPhrases_GeneratedFromRegionalPhrases`
   // from the regional phrase keys, so the configurations that reference it can be
   // reproduced. Without it, `马里兰` → `馬裏蘭` instead of `馬里蘭`.
-  let derived_file = "STPhrases_GeneratedFromRegionalPhrases.txt"
-  let derived_binding = module_name(derived_file)
+  //
+  // The `*Rev` dictionaries are `data/scripts/reverse.py` run over a variants
+  // dictionary, and `TSCharactersExt` is `data/scripts/extract_tofu_risk.py`
+  // run over `TSCharacters.txt`. Without them the reverse configurations run
+  // with a pass missing, which is why `verify` used to report them as notes.
+  let reversals : Array[(String, String)] = [
+    ("TWVariants.txt", "TWVariantsRev.txt"),
+    ("HKVariants.txt", "HKVariantsRev.txt"),
+    ("JPShinjitaiCharacters.txt", "JPShinjitaiCharactersRev.txt"),
+    ("SealCharacters.txt", "SealCharactersRev.txt"),
+    ("SealVariants.txt", "SealVariantsRev.txt"),
+  ]
+  for spec in reversals {
+    let input_path = dict_dir + "/" + spec.0
+    if !@fs.path_exists(input_path) {
+      println("gen_dict: " + input_path + " is missing; " + spec.1 + " skipped")
+      problems = problems + 1
+      continue
+    }
+    let (entries, found) = derive_reverse(read_text(input_path))
+    for problem in found {
+      println("gen_dict: " + spec.1 + ": " + problem)
+    }
+    problems = problems + found.length()
+    let (more, count) = emit_derived_dictionary(
+      out_dir,
+      derived_dir,
+      spec.1,
+      "values of " +
+      spec.0 +
+      " promoted to keys (upstream: data/scripts/reverse.py)",
+      entries,
+      verify,
+      bindings,
+      rows,
+    )
+    problems = problems + more
+    total_entries = total_entries + count
+  }
+
+  let tofu_input = dict_dir + "/TSCharacters.txt"
+  if @fs.path_exists(tofu_input) {
+    let (entries, found) = derive_tofu_risk(read_text(tofu_input))
+    for problem in found {
+      println("gen_dict: TSCharactersExt.txt: " + problem)
+    }
+    problems = problems + found.length()
+    let (more, count) = emit_derived_dictionary(
+      out_dir, derived_dir, "TSCharactersExt.txt", "mappings tagged @tofu-risk in TSCharacters.txt (upstream: data/scripts/extract_tofu_risk.py)",
+      entries, verify, bindings, rows,
+    )
+    problems = problems + more
+    total_entries = total_entries + count
+  } else {
+    println("gen_dict: " + tofu_input + " is missing; TSCharactersExt skipped")
+    problems = problems + 1
+  }
+
   let t2s_path = input + "/config/t2s.json"
   if @fs.path_exists(t2s_path) {
     let (derived, conflicts) = derive_regional_phrases(
@@ -406,44 +526,12 @@ fn main {
       }
       problems = problems + conflicts.length()
     }
-    let text = render_derived(
-      derived_file, "keys of HKPhrases.txt and TWPhrases.txt converted with t2s.json",
-      derived,
+    let (more, count) = emit_derived_dictionary(
+      out_dir, derived_dir, "STPhrases_GeneratedFromRegionalPhrases.txt", "keys of HKPhrases.txt and TWPhrases.txt converted with t2s.json",
+      derived, verify, bindings, rows,
     )
-    if !verify {
-      ensure_dir(derived_dir)
-    }
-    problems = problems +
-      sync_file(derived_dir + "/" + derived_file, text, verify)
-    bindings.push(derived_binding)
-    total_entries = total_entries + derived.length()
-    if !verify {
-      ensure_dir(out_dir + "/" + derived_binding)
-    }
-    problems = problems +
-      sync_file(
-        out_dir + "/" + derived_binding + "/data.mbt",
-        emit_dict_data(derived_binding, derived_dir + "/" + derived_file, text),
-        verify,
-      )
-    problems = problems +
-      sync_pkg(
-        out_dir + "/" + derived_binding + "/moon.pkg",
-        emit_dict_subpkg(),
-        ["data.mbt"],
-        verify,
-      )
-    rows.push(
-      "  { binding: \"" +
-      derived_binding +
-      "\", file: \"derived/" +
-      derived_file +
-      "\", entries: " +
-      derived.length().to_string() +
-      ", sha256: \"" +
-      sha256_of_text(text) +
-      "\", derived: true },\n",
-    )
+    problems = problems + more
+    total_entries = total_entries + count
   } else {
     println(
       "gen_dict: " + t2s_path + " is missing; derived dictionaries skipped",

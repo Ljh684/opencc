@@ -9,46 +9,72 @@
   ],
   "golden_skipped": 5,
   "chains": [
-    {"configuration": "hk2s", "golden": false, "missing_required": ["hk_variants_rev", "ts_characters_ext"]},
-    {"configuration": "hk2sp", "golden": false, "missing_required": ["hk_variants_rev", "ts_characters_ext"]},
-    {"configuration": "hk2t", "golden": false, "missing_required": ["hk_variants_rev"]},
+    {"configuration": "hk2s", "golden": false, "missing_required": []},
+    {"configuration": "hk2sp", "golden": false, "missing_required": []},
+    {"configuration": "hk2t", "golden": false, "missing_required": []},
     {"configuration": "jp2t", "golden": false, "missing_required": []},
     {"configuration": "s2hk", "golden": true, "missing_required": []},
     {"configuration": "s2hkp", "golden": true, "missing_required": []},
-    {"configuration": "s2seal", "golden": false, "missing_required": ["seal_characters_rev"]},
+    {"configuration": "s2seal", "golden": false, "missing_required": []},
     {"configuration": "s2t", "golden": true, "missing_required": []},
     {"configuration": "s2tw", "golden": true, "missing_required": []},
     {"configuration": "s2twp", "golden": true, "missing_required": []},
-    {"configuration": "seal2t", "golden": false, "missing_required": ["seal_variants_rev"]},
+    {"configuration": "seal2t", "golden": false, "missing_required": []},
     {"configuration": "t2hk", "golden": false, "missing_required": []},
-    {"configuration": "t2jp", "golden": false, "missing_required": ["jp_shinjitai_characters_rev"]},
-    {"configuration": "t2s", "golden": false, "missing_required": ["ts_characters_ext"]},
-    {"configuration": "t2seal", "golden": false, "missing_required": ["seal_characters_rev"]},
+    {"configuration": "t2jp", "golden": false, "missing_required": []},
+    {"configuration": "t2s", "golden": false, "missing_required": []},
+    {"configuration": "t2seal", "golden": false, "missing_required": []},
     {"configuration": "t2tw", "golden": false, "missing_required": []},
-    {"configuration": "tw2s", "golden": false, "missing_required": ["tw_variants_rev", "ts_characters_ext"]},
-    {"configuration": "tw2sp", "golden": false, "missing_required": ["tw_variants_rev", "ts_characters_ext"]},
-    {"configuration": "tw2t", "golden": false, "missing_required": ["tw_variants_rev"]}
+    {"configuration": "tw2s", "golden": false, "missing_required": []},
+    {"configuration": "tw2sp", "golden": false, "missing_required": []},
+    {"configuration": "tw2t", "golden": false, "missing_required": []}
   ],
   "round_trips": [
-    {"pair": "s2t -> t2s", "result": "identical", "differences": 0, "missing": ["ts_characters_ext"]},
-    {"pair": "s2tw -> tw2s", "result": "identical", "differences": 0, "missing": ["tw_variants_rev", "ts_characters_ext"]},
-    {"pair": "s2twp -> tw2sp", "result": "note", "differences": 30, "missing": ["tw_variants_rev", "ts_characters_ext"]},
-    {"pair": "s2hk -> hk2s", "result": "note", "differences": 2, "missing": ["hk_variants_rev", "ts_characters_ext"]},
-    {"pair": "s2hkp -> hk2sp", "result": "note", "differences": 6, "missing": ["hk_variants_rev", "ts_characters_ext"]}
+    {"pair": "s2t -> t2s", "result": "identical", "differences": 0, "missing": []},
+    {"pair": "s2tw -> tw2s", "result": "identical", "differences": 0, "missing": []},
+    {"pair": "s2twp -> tw2sp", "result": "fail", "differences": 30, "missing": []},
+    {"pair": "s2hk -> hk2s", "result": "identical", "differences": 0, "missing": []},
+    {"pair": "s2hkp -> hk2sp", "result": "fail", "differences": 4, "missing": []}
   ],
+  "testcases": {
+    "cases": 262,
+    "expectations": 583,
+    "configurations": [
+      {"configuration": "hk2s", "passed": 22, "failed": 0},
+      {"configuration": "hk2sp", "passed": 9, "failed": 0},
+      {"configuration": "hk2t", "passed": 17, "failed": 0},
+      {"configuration": "jp2t", "passed": 4, "failed": 0},
+      {"configuration": "s2hk", "passed": 53, "failed": 0},
+      {"configuration": "s2hkp", "passed": 9, "failed": 0},
+      {"configuration": "s2seal", "passed": 1, "failed": 0},
+      {"configuration": "s2t", "passed": 108, "failed": 0},
+      {"configuration": "s2tw", "passed": 67, "failed": 0},
+      {"configuration": "s2twp", "passed": 86, "failed": 0},
+      {"configuration": "seal2t", "passed": 6, "failed": 0},
+      {"configuration": "t2hk", "passed": 17, "failed": 0},
+      {"configuration": "t2jp", "passed": 4, "failed": 0},
+      {"configuration": "t2s", "passed": 56, "failed": 0},
+      {"configuration": "t2seal", "passed": 8, "failed": 0},
+      {"configuration": "t2tw", "passed": 11, "failed": 0},
+      {"configuration": "tw2s", "passed": 33, "failed": 0},
+      {"configuration": "tw2sp", "passed": 54, "failed": 0},
+      {"configuration": "tw2t", "passed": 18, "failed": 0}
+    ],
+    "mismatches": 0
+  },
   "data": {
     "repository": "https://github.com/BYVoid/OpenCC",
     "revision": "b087c2612ce808f464b0925fc1c497d24971d179 (master)",
-    "dictionaries": 20,
-    "entries": 76099,
-    "derived": 1
+    "dictionaries": 26,
+    "entries": 89817,
+    "derived": 7
   },
   "source": {
     "implementation_files": 15,
-    "implementation_lines": 3559,
-    "generated_files": 42,
-    "generated_lines": 79776,
-    "test_files": 5,
-    "test_lines": 535
+    "implementation_lines": 4196,
+    "generated_files": 48,
+    "generated_lines": 93671,
+    "test_files": 6,
+    "test_lines": 682
   }
 }

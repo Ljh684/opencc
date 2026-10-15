@@ -9,6 +9,9 @@ License:   Apache-2.0 (see OPENCC-LICENSE in this directory)
 Contents:
     dictionary/   upstream data/dictionary/*.txt (19 dictionaries + staging/Allographs.txt)
     config/       upstream data/config/*.json (19 conversion configurations + schema)
+    testcases/    upstream test/testcases/testcases.json (official expected outputs for
+                  all 19 configurations, including the reverse directions the golden
+                  corpus does not cover; added 2026-10-16)
     SHA256SUMS    SHA-256 of every file above, for verification by tools/gen_dict
 
 Why a commit hash instead of the latest release tag:

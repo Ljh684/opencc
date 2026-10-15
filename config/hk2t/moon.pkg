@@ -9,6 +9,7 @@ import {
   "Ljh684/opencc/core",
   "Ljh684/opencc/dict/cjk_compatibility_ideographs",
   "Ljh684/opencc/dict/hk_variants_rev_phrases",
+  "Ljh684/opencc/dict/hk_variants_rev",
 }
 
 formatter(ignore: [ "chain.mbt" ])

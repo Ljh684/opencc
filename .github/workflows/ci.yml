@@ -82,8 +82,9 @@ jobs:
         # SHA-256 records and regenerates every module in memory.
         run: moon run tools/gen_dict --target native -- --verify
 
-      - name: Official golden corpus
-        # Native for the same reason: the CLI reads the corpus from disk.
+      - name: Official corpora (golden + upstream test cases)
+        # Native for the same reason: the CLI reads both corpora from disk. This
+        # covers all nineteen configurations, not only the five golden chains.
         run: moon run cmd/opencc --target native -- verify --golden test/fixtures/golden
 
       - name: Verification report is current

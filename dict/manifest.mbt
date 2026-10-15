@@ -40,7 +40,13 @@ pub let sources : Array[DictSource] = [
   { binding: "tw_variants", file: "TWVariants.txt", entries: 40, sha256: "245b94eb5842957e735dd44b7e7d4ff469a3643126cc8fa511adda5281e9cb86", derived: false },
   { binding: "tw_variants_phrases", file: "TWVariantsPhrases.txt", entries: 12, sha256: "36df033675a2e9152927fa8419f0732a061cb4909c5060f25a5cfc9b08ffff06", derived: false },
   { binding: "tw_variants_rev_phrases", file: "TWVariantsRevPhrases.txt", entries: 1128, sha256: "5ebfb4bdc938c2b14e01ace378988d5d3dc12462b3496ef1d424951ccd371256", derived: false },
-  { binding: "st_phrases_generated_from_regional_phrases", file: "derived/STPhrases_GeneratedFromRegionalPhrases.txt", entries: 556, sha256: "42a72b9e131c6ca535b004158fcca61639617565772b61131fb550266aef31aa", derived: true },
+  { binding: "tw_variants_rev", file: "derived/TWVariantsRev.txt", entries: 40, sha256: "650159c27509b4d39151729334014f23e9eec0affc68bcb5c638c8b104774474", derived: true },
+  { binding: "hk_variants_rev", file: "derived/HKVariantsRev.txt", entries: 74, sha256: "ce41628ee2b849a1ddf545e8775783d9ee4732aed6e3208f4ea169b3fca0da79", derived: true },
+  { binding: "jp_shinjitai_characters_rev", file: "derived/JPShinjitaiCharactersRev.txt", entries: 476, sha256: "b79998e974b9aec491112a4fca364f03d029af2dfd421142e4c4065f22e0f059", derived: true },
+  { binding: "seal_characters_rev", file: "derived/SealCharactersRev.txt", entries: 11231, sha256: "cc7be2886b37006363480326f16857edeae14b2ecf995c87bc364e25f13bb080", derived: true },
+  { binding: "seal_variants_rev", file: "derived/SealVariantsRev.txt", entries: 1002, sha256: "4b1c12c4838eb065930b1891fcff02af95712d53112856298defb8b4325675e8", derived: true },
+  { binding: "ts_characters_ext", file: "derived/TSCharactersExt.txt", entries: 895, sha256: "785c94eb546335d868443965b54d5009144df45fbb8069cafb9118377344b781", derived: true },
+  { binding: "st_phrases_generated_from_regional_phrases", file: "derived/STPhrases_GeneratedFromRegionalPhrases.txt", entries: 556, sha256: "26e8ff04f1ae7c262b743ee038a83beea27a340fa6b6a764fc8ac35af87090d5", derived: true },
 ]
 
 ///|
@@ -70,6 +76,12 @@ pub fn lookup(binding : String) -> Array[String]? {
     "tw_variants" => Some(tw_variants)
     "tw_variants_phrases" => Some(tw_variants_phrases)
     "tw_variants_rev_phrases" => Some(tw_variants_rev_phrases)
+    "tw_variants_rev" => Some(tw_variants_rev)
+    "hk_variants_rev" => Some(hk_variants_rev)
+    "jp_shinjitai_characters_rev" => Some(jp_shinjitai_characters_rev)
+    "seal_characters_rev" => Some(seal_characters_rev)
+    "seal_variants_rev" => Some(seal_variants_rev)
+    "ts_characters_ext" => Some(ts_characters_ext)
     "st_phrases_generated_from_regional_phrases" => Some(st_phrases_generated_from_regional_phrases)
     _ => None
   }

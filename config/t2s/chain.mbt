@@ -7,7 +7,7 @@ pub let name : String = "t2s"
 pub let title : String = "Traditional Chinese (OpenCC Standard) to Simplified Chinese"
 
 ///| Dictionaries this configuration references but the snapshot lacks.
-pub let missing : Array[String] = ["ts_characters_ext", ]
+pub let missing : Array[String] = []
 
 ///| Build the conversion chain. Only the dictionaries listed in the package
 /// import are linked in.
@@ -19,7 +19,7 @@ pub fn chain() -> @core.Chain {
     ],
     None,
     [
-      @core.Node::group(@core.ShortCircuit, [@core.Node::leaf(@core.Dict::parse("ts_phrases", @ts_phrases.ts_phrases)), @core.Node::leaf(@core.Dict::parse("ts_characters", @ts_characters.ts_characters))]),
+      @core.Node::group(@core.ShortCircuit, [@core.Node::leaf(@core.Dict::parse("ts_phrases", @ts_phrases.ts_phrases)), @core.Node::leaf(@core.Dict::parse("ts_characters_ext", @ts_characters_ext.ts_characters_ext)), @core.Node::leaf(@core.Dict::parse("ts_characters", @ts_characters.ts_characters))]),
     ],
   )
 }

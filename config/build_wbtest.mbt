@@ -32,11 +32,29 @@ test "regional wording needs the phrase passes" {
 }
 
 ///|
-test "missing dictionaries are reported per configuration" {
-  // t2s references TSCharactersExt, which OpenCC builds during its own build and
-  // the pinned snapshot does not ship.
-  assert_true(missing_dictionaries("t2s").contains("ts_characters_ext"))
-  assert_eq(missing_dictionaries("s2t").length(), 0)
+test "every configuration resolves completely" {
+  // The snapshot ships 19 dictionaries and `tools/gen_dict` derives the six
+  // OpenCC builds itself (the `*Rev` reversals, `TSCharactersExt` and the
+  // regional phrase projection), so no configuration runs with a pass missing.
+  for name in chain_names() {
+    assert_eq(
+      missing_dictionaries(name).length(),
+      0,
+      msg="missing dictionaries for \{name}",
+    )
+  }
+  // The mechanism still reports an unknown name as "no specification", which is
+  // what the CLI prints for a configuration the snapshot does not carry.
+  assert_eq(missing_dictionaries("no-such-config").length(), 0)
+}
+
+///|
+test "reverse configurations run their derived dictionaries" {
+  // These only work when the build-time derived dictionaries are present:
+  // tw2sp needs TWVariantsRev, hk2s needs HKVariantsRev, and both need
+  // TSCharactersExt through the t2s half of the chain.
+  assert_eq(convert("tw2sp", "電腦軟體"), Some("电脑软件"))
+  assert_eq(convert("hk2s", "香港電腦"), Some("香港电脑"))
 }
 
 ///|

@@ -7,7 +7,7 @@ pub let name : String = "hk2s"
 pub let title : String = "Traditional Chinese (Hong Kong variant) to Simplified Chinese"
 
 ///| Dictionaries this configuration references but the snapshot lacks.
-pub let missing : Array[String] = ["hk_variants_rev", "ts_characters_ext", ]
+pub let missing : Array[String] = []
 
 ///| Build the conversion chain. Only the dictionaries listed in the package
 /// import are linked in.
@@ -19,8 +19,8 @@ pub fn chain() -> @core.Chain {
     ],
     Some(@core.Node::leaf(@core.Dict::parse("ts_phrases", @ts_phrases.ts_phrases))),
     [
-      @core.Node::group(@core.ShortCircuit, [@core.Node::leaf(@core.Dict::parse("hk_variants_rev_phrases", @hk_variants_rev_phrases.hk_variants_rev_phrases))]),
-      @core.Node::group(@core.ShortCircuit, [@core.Node::leaf(@core.Dict::parse("ts_phrases", @ts_phrases.ts_phrases)), @core.Node::leaf(@core.Dict::parse("ts_characters", @ts_characters.ts_characters))]),
+      @core.Node::group(@core.ShortCircuit, [@core.Node::leaf(@core.Dict::parse("hk_variants_rev_phrases", @hk_variants_rev_phrases.hk_variants_rev_phrases)), @core.Node::leaf(@core.Dict::parse("hk_variants_rev", @hk_variants_rev.hk_variants_rev))]),
+      @core.Node::group(@core.ShortCircuit, [@core.Node::leaf(@core.Dict::parse("ts_phrases", @ts_phrases.ts_phrases)), @core.Node::leaf(@core.Dict::parse("ts_characters_ext", @ts_characters_ext.ts_characters_ext)), @core.Node::leaf(@core.Dict::parse("ts_characters", @ts_characters.ts_characters))]),
     ],
   )
 }

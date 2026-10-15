@@ -24,6 +24,12 @@ import {
   "Ljh684/opencc/dict/tw_variants",
   "Ljh684/opencc/dict/tw_variants_phrases",
   "Ljh684/opencc/dict/tw_variants_rev_phrases",
+  "Ljh684/opencc/dict/tw_variants_rev",
+  "Ljh684/opencc/dict/hk_variants_rev",
+  "Ljh684/opencc/dict/jp_shinjitai_characters_rev",
+  "Ljh684/opencc/dict/seal_characters_rev",
+  "Ljh684/opencc/dict/seal_variants_rev",
+  "Ljh684/opencc/dict/ts_characters_ext",
   "Ljh684/opencc/dict/st_phrases_generated_from_regional_phrases",
 }
 

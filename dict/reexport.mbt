@@ -57,6 +57,24 @@ pub using @tw_variants_phrases {tw_variants_phrases}
 ///| Re-export of the `tw_variants_rev_phrases` dictionary.
 pub using @tw_variants_rev_phrases {tw_variants_rev_phrases}
 
+///| Re-export of the `tw_variants_rev` dictionary.
+pub using @tw_variants_rev {tw_variants_rev}
+
+///| Re-export of the `hk_variants_rev` dictionary.
+pub using @hk_variants_rev {hk_variants_rev}
+
+///| Re-export of the `jp_shinjitai_characters_rev` dictionary.
+pub using @jp_shinjitai_characters_rev {jp_shinjitai_characters_rev}
+
+///| Re-export of the `seal_characters_rev` dictionary.
+pub using @seal_characters_rev {seal_characters_rev}
+
+///| Re-export of the `seal_variants_rev` dictionary.
+pub using @seal_variants_rev {seal_variants_rev}
+
+///| Re-export of the `ts_characters_ext` dictionary.
+pub using @ts_characters_ext {ts_characters_ext}
+
 ///| Re-export of the `st_phrases_generated_from_regional_phrases` dictionary.
 pub using @st_phrases_generated_from_regional_phrases {st_phrases_generated_from_regional_phrases}
 

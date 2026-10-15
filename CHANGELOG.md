@@ -4,6 +4,23 @@
 
 ## Unreleased
 
+- **补齐派生词典**：按上游脚本（`data/scripts/reverse.py`、`extract_tofu_risk.py`）在
+  MoonBit 中复刻 OpenCC 构建期生成的 6 个词典——`TWVariantsRev`、`HKVariantsRev`、
+  `JPShinjitaiCharactersRev`、`SealCharactersRev`、`SealVariantsRev`、`TSCharactersExt`。
+  词典总数 20 → 26、条目 76099 → 89817，**19 个配置再没有缺失的 pass**（`missing` 全为空）。
+  复刻结果与一份独立实现逐字节比对（6/6、13718 条），并补 6 条规则单元测试
+  （值合并顺序、`@reverse-prefer` 前置、`@tofu-risk` 去掉自身映射、按码点排序）。
+- **接入官方 testcases 语料**：`data/opencc/testcases/testcases.json`（上游自带期望输出）
+  入库并在 `opencc verify` 中逐条比对，覆盖全部 19 个配置：262 例 / 583 条期望，
+  **583/583 逐字节复现**。反方向与地区方向（`t2s`、`tw2s`、`tw2sp`、`hk2s`、`seal2t`…）
+  第一次有了官方证据。
+- **修复代理对缺陷**：官方语料暴露了一个真实 bug——未命中时透传按单个 UTF-16 码元前进，
+  而 MoonBit 的字符串切片在起点落在低代理项时返回空视图，于是基本平面以外的字符（罕见
+  汉字、小篆）会被吞掉。引擎改为按字符前进（`core::char_width`），新增
+  `core/astral_wbtest.mbt` 的 4 条回归测试；官方 testcases 通过数 576/583 → 583/583。
+- `verify` 的往返检查改为**观察项**（`TWPhrasesRev` 不是 `TWPhrases` 的精确逆，差异属上游
+  数据性质），正确性判定改为官方 golden + 官方 testcases；报告新增 testcases 段落，
+  CI 步骤相应更名。
 - **可核对报告**：`opencc verify --report <path>` 把同一批结果落成文档（`.json` 后缀出 JSON）——
   19 个配置各自的覆盖状态与缺失词典、5 条正向往返、数据快照（revision / 词典数 / 词条数 /
   SHA-256 校验方式）以及代码规模（手写实现 15 个文件 3559 行、生成数据 42 个文件 79776 行、

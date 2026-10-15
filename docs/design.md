@@ -113,22 +113,35 @@ pub let st_characters : Array[String] = [st_characters_chunk_0]
 
 ### 派生词典
 
-OpenCC 有几个词典是它自己在构建期生成的。本项目复刻了其中的
-`STPhrases_GeneratedFromRegionalPhrases`：取 HK / TW 词组词典的每个 key，用 `t2s`
-配置转成简体，再映射回原来的地区词组；简体投影短于 3 个码元的条目被丢弃（否则会
-切断更长的简体词）。生成结果同时落成可审计的文本 `data/derived/…txt` 与编译期数据。
+OpenCC 有 6 个词典是它自己在构建期生成的（`data/CMakeLists.txt` 的 `DICTS_GENERATED`），
+快照里没有文本。本项目按上游脚本在 MoonBit 中复刻全部 6 个，生成结果同时落成可审计的
+文本 `data/derived/…txt` 与编译期数据：
 
-没有这一步，`马里兰` 会变成 `馬裏蘭` 而不是 OpenCC 的 `馬里蘭`。
+| 派生词典 | 上游规则 | 复刻要点 |
+| --- | --- | --- |
+| `TWVariantsRev`、`HKVariantsRev`、`JPShinjitaiCharactersRev`、`SealCharactersRev`、`SealVariantsRev` | `data/scripts/reverse.py` | 每个 value 变成 key，候选表按原 key 首次出现顺序收集；`# @reverse-prefer:` 注释把指定候选提到最前；条目按**码点**排序（Python 语义，与 UTF-16 码元序在篆书字符上不同） |
+| `TSCharactersExt` | `data/scripts/extract_tofu_risk.py` | 取 `TSCharacters.txt` 中 `# @tofu-risk:` 标注后紧跟的映射，去掉首个"自身映射"候选，按标注出现顺序输出 |
+| `STPhrases_GeneratedFromRegionalPhrases` | `data/scripts/generate_st_phrases_from_regional_phrases.py` | 取 HK / TW 词组词典的每个 key，用 `t2s` 配置转成简体再映射回原词组；简体投影短于 3 个码元的丢弃 |
+
+没有这些复刻，反向配置只能"带缺口运行"：`马里兰` 会变成 `馬裏蘭` 而不是 `馬里蘭`，
+`t2s` 会丢掉 `@tofu-risk` 字符的候选，`tw2sp` / `hk2s` / `seal2t` 等会在官方 testcases
+上失败。规则本身由 `tools/gen_dict` 的单元测试锁定（值合并顺序、偏好前置、自身映射去除、
+上游视为构建错误的情形），生成结果另与一份独立实现逐字节比对。
 
 ## 字符模型
 
-MoonBit 的 `String` 以 UTF-16 码元存储，增补平面字符占两个码元。对本项目的影响：
+MoonBit 的 `String` 以 UTF-16 码元存储，增补平面字符占两个码元（高代理项 + 低代理项）。
+引擎的匹配、索引与比较都按**码元**进行：词典 key 与输入文本走同一套比较，因此结论一致，
+而且索引可以直接用首个码元分桶（U+20000 以上的字以高代理项入桶）。
 
-- 绝大多数词典 key 位于 BMP，按码元匹配与按码点匹配结果一致。
-- CJK 兼容汉字（U+2F800–U+2FA1F）属于增补平面，必须先生成规范字形再匹配。
+唯一的例外是**复制**：`Node::apply` 与 `Chain::segment` 在未命中时按**字符**前进
+（`core::char_width` 返回 1 或 2），保证任何切片都不会从低代理项开始。这条规则不是理论
+洁癖——MoonBit 的字符串切片在起点落在低代理项时返回空视图，按码元前进会静默吞掉所有
+增补平面字符。该缺陷由官方 testcases（`seal2t`、`t2s`）暴露，修复过程与回归测试见
+[acceptance.md](acceptance.md)。
 
-因此引擎在入口处把输入规范化为 `Array[Char]` 处理，输出时再还原为 `String`；
-归一化字典与代理对处理是 W1 的交付内容。
+CJK 兼容汉字（U+2F800–U+2FA1F）同样在增补平面，由归一化词典 `CJK_Compatibility_Ideographs`
+映射到规范字形后再参与匹配。
 
 ## 体积与性能策略
 
@@ -138,8 +151,8 @@ wasm 场景下词典体积是首要约束。实现方式是包粒度而不是运
 - 每个配置是独立包 `config/<name>`，只 import 它引用的词典；
 - `dict` 与 `config` 是聚合包（按名字查找、CLI 与测试用），它们会链入全部数据。
 
-于是"只做一个方向"的程序天然只带那个方向的数据。实测：`examples/t2s` 249 KB、
-`examples/s2t` 913 KB、全量 CLI 1341 KB（wasm-gc release）。数字与复现命令见
+于是"只做一个方向"的程序天然只带那个方向的数据。实测：`examples/t2s` 259 KB、
+`examples/s2t` 914 KB、全量 CLI 1622 KB（wasm-gc release）。数字与复现命令见
 [performance.md](performance.md)。
 
 没做的是"同一配置内再裁剪词表"：`STPhrases` 1178 KB 是正向配置的硬成本，OpenCC 自己也
@@ -147,10 +160,17 @@ wasm 场景下词典体积是首要约束。实现方式是包粒度而不是运
 
 ## 测试策略
 
-1. **官方一致性**：`test/fixtures/golden` 中的输入与期望输出逐字节比对。
-2. **属性测试**：随机分块与整体转换结果一致；非中文字符不变；幂等性。
-3. **单元测试**：词典组合语义、最长匹配边界、空串、纯 ASCII、emoji。
-4. **回归**：每次词典更新都重跑全部一致性用例，并记录通过率变化。
+1. **官方 golden**：`test/fixtures/golden` 的长文本输入与期望输出逐字节比对（5 条正向链）。
+2. **官方 testcases**：`data/opencc/testcases/testcases.json` 的 262 例 / 583 条期望，
+   覆盖全部 19 个配置（反方向与地区方向的正确性依据）。
+3. **属性测试**：随机分块与整体转换结果一致；非中文字符不变；幂等性；代理对不被拆开。
+4. **单元测试**：词典组合语义、最长匹配边界、空串、纯 ASCII、emoji、派生词典规则。
+5. **回归**：`test/fixtures/regression/` 锁住 19 个配置的行为，只在有意改变时更新基线。
+
+往返检查（把官方输出用反向配置转回源文本）作为**观察**打印而不是判定：`TWPhrasesRev`
+不是 `TWPhrases` 的精确逆（例如 `TWPhrases` 有 `創建 → 建立`，`TWPhrasesRev` 有
+`建立 → 創建`，于是"正向没动过 `建立`、反向却把它变成 `創建`"），差异属于上游数据的
+性质，正确性以官方 testcases 为准。
 
 ## 非目标
 

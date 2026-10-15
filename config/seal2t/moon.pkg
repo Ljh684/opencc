@@ -9,6 +9,7 @@ import {
   "Ljh684/opencc/core",
   "Ljh684/opencc/dict/cjk_compatibility_ideographs",
   "Ljh684/opencc/dict/seal_characters",
+  "Ljh684/opencc/dict/seal_variants_rev",
 }
 
 formatter(ignore: [ "chain.mbt" ])

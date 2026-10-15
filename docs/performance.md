@@ -89,19 +89,34 @@ moon run tools/bench_lookup --target native
 | js | 通过 | 需要 node 在 PATH | `opencc.js` 1.66 MB |
 | native | 通过 | 26/26 | `opencc.exe` 1.54 MB |
 
-## 按配置裁剪词典（2026-09-30）
+## 按配置裁剪词典（2026-10-16）
 
 每个词典是独立包，每个配置也是独立包（只 import 它用到的词典），所以"只想做某个方向"
 的程序不会链进其它词典。三个可复现的实测（`moon build <path> --target wasm-gc --release`）：
 
 | 构建 | 链入的词典数据 | wasm-gc 产物 |
 | --- | --- | --- |
-| `examples/t2s`（只用 t2s） | 180 KB | **249 KB** |
-| `examples/s2t`（只用 s2t） | 1294 KB | **913 KB** |
-| `cmd/opencc`（19 个配置都要） | 1680 KB | 1341 KB |
+| `examples/t2s`（只用 t2s） | 193 KB（4 本词典） | **259 KB** |
+| `examples/s2t`（只用 s2t） | 1294 KB（4 本词典） | **914 KB** |
+| `cmd/opencc`（19 个配置都要） | 1900 KB（26 本词典） | 1622 KB |
 
 结论：反向或地区方向收益最大（t2s 相对全量 5.4× 更小），而 `s2*` 方向的体积由
 `STPhrases`（1178 KB，占全量的 70%）决定，任何正向配置都躲不开它——这一点如实写在表里，
 不假装裁剪能解决所有场景。
 
 各配置的词典构成可以用 `tools/gen_dict --verify` 之后的 `config/<name>/moon.pkg` 直接看到。
+
+## 补齐派生词典之后（2026-10-16）
+
+为 6 个 OpenCC 构建期派生词典补上复刻后，词典总数 20 → 26、条目 76099 → 89817，
+体积与耗时变化如下（同一台机器，`moon build --target wasm-gc --release`）：
+
+| 构建 | 之前 | 之后 | 说明 |
+| --- | --- | --- | --- |
+| `examples/t2s` | 249 KB | 259 KB | t2s 现在链入 `TSCharactersExt`（895 条） |
+| `examples/s2t` | 913 KB | 914 KB | 只随机组投影词典的表头文字变化 |
+| `cmd/opencc` | 1341 KB | 1622 KB | 需要全部 26 本词典，其中篆书 `*Rev` 占大头（约 59 + 49 KB 数据） |
+
+`opencc verify` 现在还要跑官方 testcases 的 583 条期望（native 构建、未开 release），
+单次约 60 s；CI 里这是第 10 步。想只看结果不看细节时，报告文件在
+[verification-report.md](verification-report.md)。

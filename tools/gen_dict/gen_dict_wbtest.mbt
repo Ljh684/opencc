@@ -70,6 +70,76 @@ test "long dictionaries are split into chunks" {
 }
 
 ///|
+test "reverse merges values into keys and keeps first-seen order" {
+  let (entries, problems) = derive_reverse("# header\n甲\tA B\n乙\tA\n")
+  assert_eq(problems.length(), 0)
+  assert_eq(entries.length(), 2)
+  assert_eq(entries[0].0, "A")
+  assert_eq(entries[0].1, "甲 乙")
+  assert_eq(entries[1].0, "B")
+  assert_eq(entries[1].1, "甲")
+}
+
+///|
+test "reverse applies @reverse-prefer before sorting" {
+  let (entries, problems) = derive_reverse(
+    "# @reverse-prefer: A 乙\n甲\tA\n乙\tA\n",
+  )
+  assert_eq(problems.length(), 0)
+  assert_eq(entries[0].1, "乙 甲")
+  // A one-field preference means "keep this key first", which is what upstream
+  // writes for entries such as the identity mapping `梁\t梁`; the candidate list
+  // of each reversed key is unaffected.
+  let (kept, second) = derive_reverse("# @reverse-prefer: 梁\n梁\t梁 樑\n")
+  assert_eq(second.length(), 0)
+  assert_eq(kept.length(), 2)
+  assert_eq(kept[0].0, "梁")
+  assert_eq(kept[0].1, "梁")
+  assert_eq(kept[1].0, "樑")
+  assert_eq(kept[1].1, "梁")
+}
+
+///|
+test "reverse sorts by code point, not by UTF-16 code unit" {
+  // U+20000 is a surrogate pair (0xD840 0xDC00) in UTF-16, which orders below
+  // U+FFFD there but above it by code point, and Python sorts by code point.
+  let (entries, problems) = derive_reverse("甲\t\u{20000}\n乙\t\u{FFFD}\n")
+  assert_eq(problems.length(), 0)
+  assert_eq(entries[0].0, "\u{FFFD}")
+  assert_eq(entries[1].0, "\u{20000}")
+  assert_true(compare_code_points("\u{20000}", "\u{FFFD}") > 0)
+  assert_true(compare_code_points("A", "AB") < 0)
+}
+
+///|
+test "reverse reports what upstream treats as a build error" {
+  let (_, broken) = derive_reverse("line without a tab\n")
+  assert_eq(broken.length(), 1)
+  let (_, orphan) = derive_reverse("# @reverse-prefer: 么 幺\n么\t么\n")
+  assert_eq(orphan.length(), 1)
+}
+
+///|
+test "tofu-risk extraction drops the tagged self-mapping" {
+  let text = "# @tofu-risk: rare form\n㑮\t㑮 X\nplain\t值\n# @tofu-risk: another\n㒓\tY\n"
+  let (entries, problems) = derive_tofu_risk(text)
+  assert_eq(problems.length(), 0)
+  assert_eq(entries.length(), 2)
+  assert_eq(entries[0].0, "㑮")
+  assert_eq(entries[0].1, "X")
+  assert_eq(entries[1].0, "㒓")
+  assert_eq(entries[1].1, "Y")
+}
+
+///|
+test "tofu-risk reports a missing or self-only mapping" {
+  let (_, dangling) = derive_tofu_risk("# @tofu-risk: dangling\n")
+  assert_eq(dangling.length(), 1)
+  let (_, self_only) = derive_tofu_risk("# @tofu-risk: self only\n甲\t甲\n")
+  assert_eq(self_only.length(), 1)
+}
+
+///|
 test "config packages reference only the dictionaries they use" {
   let spec : ChainSpec = {
     name: "sample",

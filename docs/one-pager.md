@@ -17,24 +17,26 @@
    逐段转换三条链路；
 2. **数据管线**：把 OpenCC 快照编译成内嵌文本块，逐文件 SHA-256 校验，`--verify` 幂等；
 3. **CLI 与库 API**：`list-configs` / `convert` / `verify`，以及 `convert(name, text)`；
-4. **派生词典复刻**：按上游规则重建 OpenCC 构建期生成的
-   `STPhrases_GeneratedFromRegionalPhrases`，并留下可读文本。
+4. **派生词典复刻**：按上游脚本重建 OpenCC 构建期生成的全部 6 个派生词典
+   （`*Rev`、`TSCharactersExt`、地区词组投影），并留下可读文本。
+5. **官方 testcases 语料**：`verify` 逐条比对上游自带期望输出，覆盖全部 19 个配置。
 
 ## 与现有作品的区别（都可核查）
 
 | 维度 | 事实 | 怎么核 |
 | --- | --- | --- |
 | 无重复 | mooncakes 全量 **2752** 个包中，`opencc`/`简繁`/`简体`/`繁体`/`s2t`/`t2s` 命中 **0**；GitHub `moonbit opencc` 只指向本项目 | 见 [comparison.md](comparison.md) 第 1 节 |
-| 语义等价 | OpenCC 官方 golden 语料 **5/5 逐字节通过**；CLI 文件输出与期望文件逐字节相同 | `opencc verify` |
-| 可逆性 | `s2t → t2s`、`s2tw → tw2s` 往返逐字节回到源文本 | `opencc verify` 的 round-trip 段 |
+| 语义等价 | OpenCC 官方 golden 语料 **5/5 逐字节通过**，官方 testcases 语料 **583/583 逐字节复现**（19 个配置、262 例） | `opencc verify` |
+| 可逆性 | `s2t → t2s`、`s2tw → tw2s`、`s2hk → hk2s` 往返逐字节回到源文本；`s2twp → tw2sp` 的差异属上游数据性质（见 design.md） | `opencc verify` 的 round-trip 段 |
 | 形态 | 纯 MoonBit、零 FFI、编译期内联数据；wasm / wasm-gc / js / native 四后端都能构建并测 | `moon test --target <t>` |
-| 体积 | 单方向构建 t2s **249 KB**、s2t **913 KB**（全量 CLI 1341 KB，wasm-gc release） | `moon build examples/t2s --target wasm-gc --release` |
+| 体积 | 单方向构建 t2s **259 KB**、s2t **914 KB**（全量 CLI 1622 KB，wasm-gc release） | `moon build examples/t2s --target wasm-gc --release` |
 | 可用性 | CLI（`convert` / `verify`）与库 API；`examples/web` 导出可在浏览器/Node 直接调用的函数 | `node examples/web/demo.mjs` |
 
 ## 当前进度
 
 从 2026-09-24 起持续提交，每完成一个功能就打一个提交；`moon check` 无警告，
-**33 个单元测试**（含覆盖 76099 条词典条目的全量属性测试），官方语料 5/5。
+**50 个单元测试**（含覆盖 89817 条词典条目的全量属性测试），官方 golden 5/5 与
+官方 testcases 583/583。
 详细证据与复现命令见 [acceptance.md](acceptance.md)。
 
 ## 非目标（划清边界）
@@ -43,11 +45,9 @@
 - 不覆盖 OpenCC 的 `staging/` 实验字典与 `*_jieba` 分词变体；
 - 暂不支持标准输入：MoonBit 的 core 与 `moonbitlang/x` 没有标准输入 API，加 FFI 会破坏
   「零 FFI」，因此先支持文件与 `--text`；
-- 部分反方向配置引用 OpenCC 构建期生成的词典（如 `TSCharactersExt`），快照未提供，
-  CLI 会在 `list-configs` 与 `verify` 中逐条列出，而不是悄悄降级。
 
 ## 后续计划
 
 1. ~~发布到 mooncakes~~ **已完成**：`Ljh684/opencc` v0.1.0，`moon add Ljh684/opencc` 可直接安装；
 2. 演示素材：网页 demo 已完成（`examples/web`），README 动图仍有空间；
-3. 继续扩大逐字节证据的覆盖面（更多配置与语料）。
+3. ~~继续扩大逐字节证据的覆盖面~~ **已完成**：官方 testcases 让 19 个配置都有逐字节证据。

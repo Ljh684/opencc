@@ -7,7 +7,7 @@ pub let name : String = "t2jp"
 pub let title : String = "Old Japanese Kanji (Kyūjitai) to New Japanese Kanji (Shinjitai)"
 
 ///| Dictionaries this configuration references but the snapshot lacks.
-pub let missing : Array[String] = ["jp_shinjitai_characters_rev", ]
+pub let missing : Array[String] = []
 
 ///| Build the conversion chain. Only the dictionaries listed in the package
 /// import are linked in.
@@ -19,6 +19,7 @@ pub fn chain() -> @core.Chain {
     ],
     None,
     [
+      @core.Node::leaf(@core.Dict::parse("jp_shinjitai_characters_rev", @jp_shinjitai_characters_rev.jp_shinjitai_characters_rev)),
     ],
   )
 }

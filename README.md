@@ -28,14 +28,15 @@ let chain = @s2twp.chain()
 `moon.pkg` 里需要 `import { "Ljh684/opencc/config" }`（或单配置包 `.../config/<name>`）。
 
 > 状态：**开发中（WIP）**。已完成：仓库骨架与 Apache-2.0 许可、上游 OpenCC 数据快照
-> （19 个词典 / 19 个配置 / 官方 golden 语料）、转换引擎（首字索引、嵌套词典组、归一化 →
-> 分词 → 逐段转换）、词典生成器（`tools/gen_dict`：把 20 个词典共 76099 条数据编译成
-> 内嵌文本块、复刻 OpenCC 构建期派生词典、SHA-256 校验与 `--verify` 幂等检查）、
-> CLI 与库 API。
+> （19 个词典 / 19 个配置 / 官方 golden 语料 + 官方 testcases 语料）、转换引擎（首字索引、
+> 嵌套词典组、归一化 → 分词 → 逐段转换）、词典生成器（`tools/gen_dict`：把 26 个词典共
+> 89817 条数据编译成内嵌文本块，其中 6 个是复刻 OpenCC 构建期生成的派生词典；SHA-256
+> 校验与 `--verify` 幂等检查）、CLI 与库 API。
 >
-> **官方一致性：5/5 逐字节通过**（`s2t`、`s2hk`、`s2tw`、`s2hkp`、`s2twp`，
-> 用仓库内 `test/fixtures/golden` 语料）。`moon check` 无警告，**39 个测试**通过
-> （含覆盖 76099 条词典条目的全量属性测试，以及 19 个配置的回归基线）。
+> **官方一致性：golden 语料 5/5 逐字节通过；官方 testcases 语料覆盖全部 19 个配置、
+> 262 例 / 583 条期望值全部逐字节复现**（含 `t2s`、`tw2s`、`tw2sp`、`hk2s`、`seal2t`
+> 等反方向与地区方向）。`moon check` 无警告，**50 个测试**通过
+> （含覆盖 89817 条词典条目的全量属性测试，以及 19 个配置的回归基线）。
 > 见下方[路线图](#路线图)。
 
 ---
@@ -60,6 +61,7 @@ MoonBit 生态目前已经具备中文分词的移植、拼音、中文数字等
 - 词组优先于单字的多段转换链（归一化 → 词组/单字 → 地区变体短语 → 变体字）。
 - 最大匹配分词驱动的词组替换，避免逐字转换造成的错译。
 - 非中文内容（数字、标点、拉丁字母、emoji、空白）原样保留。
+- 基本平面以外的字符（罕见汉字、小篆）按字符整体处理，不会被代理对拆开。
 
 ### 19 个内置配置
 
@@ -95,7 +97,7 @@ MoonBit 生态目前已经具备中文分词的移植、拼音、中文数字等
 ## 使用
 
 ```bash
-# 列出全部 19 个配置（会标出引用但快照未提供的词典）
+# 列出全部 19 个配置（会标出任何引用但解析不到的词典，当前为空）
 opencc list-configs
 
 # 文本 / 文件转换；不给 -o 时结果写到 stdout
@@ -106,7 +108,7 @@ opencc convert -c s2t --input in.txt --output out.txt
 opencc -c s2t -c t2s --text "内存泄漏与软件优化"
 opencc convert -c s2twp --input-dir corpus --output-dir converted --ext .txt
 
-# 与 OpenCC 官方语料逐字节比对
+# 与 OpenCC 官方语料逐字节比对：golden（5 条链）+ testcases（19 个配置）
 opencc verify --golden test/fixtures/golden
 
 # 同一批结果落成报告（Markdown 或 JSON），并附代码规模与数据快照
@@ -127,9 +129,10 @@ let chain = @opencc.chain("s2twp")
 - **生态里没有替代品**：mooncakes 2648 个包中，`opencc`、`简繁`、`简体`、`繁体`、
   `traditional chinese`、`s2t`、`t2s` 的命中数**全部为 0**；已有的是分词（jieba、moonnlp）、
   拼音、中文数字，都不做字形与地区用词转换。
-- **与 OpenCC 语义一致且可验证**：官方 golden 语料 5/5 逐字节通过，CLI 文件输出与期望文件
-  逐字节相同；而 OpenCC 是 C++ + 运行时二进制词典，本项目是纯 MoonBit、零 FFI、数据编译期
-  内联，可编到 wasm / js / native。
+- **与 OpenCC 语义一致且可验证**：官方 golden 语料 5/5 逐字节通过，官方 testcases 语料
+  262 例 / 583 条期望全部复现（覆盖全部 19 个配置，含反方向与地区方向）；而 OpenCC 是
+  C++ + 运行时二进制词典，本项目是纯 MoonBit、零 FFI、数据编译期内联，可编到
+  wasm / js / native。
 - **数据可审计**：上游 revision、逐文件 SHA-256、`gen_dict --verify` 幂等校验，
   连 OpenCC 构建期生成的派生词典都按上游规则复刻并留下可读文本。
 
@@ -146,7 +149,7 @@ python -m http.server                           # 再打开 examples/web/index.h
 
 `examples/web` 是一个 `foreign_library` 包，用 `#export_name` 导出 `opencc_to_taiwan` 与
 `opencc_to_simplified` 两个函数（JS 侧的类型声明见构建产物 `web.d.ts`）。网页 demo 直接调用
-编译后的模块，没有任何网络请求；产物 1.36 MB，只包含 s2twp 与 t2s 两个方向需要的词典。
+编译后的模块，没有任何网络请求；产物 1.40 MB，只包含 s2twp 与 t2s 两个方向需要的词典。
 
 ```
 $ node examples/web/demo.mjs
@@ -162,10 +165,11 @@ $ node examples/web/demo.mjs
 
 | 层次 | 内容 | 命令 |
 | --- | --- | --- |
-| 正确性（oracle） | OpenCC 官方 golden 语料，5 条链逐字节比对 + 往返检查 | `moon run cmd/opencc --target native -- verify` |
-| 回归锁 | `test/fixtures/regression/`：19 个配置各一份基线，锁定行为不漂移（覆盖没有官方语料的另外 14 个配置） | `moon test --target native` |
-| 数据完整性 | 20 个词典 / 76099 条目重新生成后与仓库逐字节一致，SHA-256 全部匹配 | `moon run tools/gen_dict --target native -- --verify` |
-| 属性测试 | 76099 条词条逐条命中自身 key、分词边界、行粒度、二次转换稳定性 | `moon test`（四个后端） |
+| 正确性（oracle） | OpenCC 官方 golden 语料（5 条链）+ 官方 testcases 语料（19 个配置、262 例 / 583 条期望），全部逐字节比对 | `moon run cmd/opencc --target native -- verify` |
+| 回归锁 | `test/fixtures/regression/`：19 个配置各一份基线，锁定行为不漂移 | `moon test --target native` |
+| 数据完整性 | 26 个词典 / 89817 条目重新生成后与仓库逐字节一致，快照每个文件的 SHA-256 全部匹配 | `moon run tools/gen_dict --target native -- --verify` |
+| 派生词典 | 6 个 OpenCC 构建期派生词典（`*Rev`、`TSCharactersExt`、地区词组投影）与上游脚本逐字节等价 | `moon test --target native -p tools/gen_dict` |
+| 属性测试 | 89817 条词条逐条命中自身 key、分词边界、行粒度、代理对不被拆开、二次转换稳定性 | `moon test`（四个后端） |
 | 性能 | 中文密集 / ASCII 密集两个语料的吞吐 | `moon run tools/bench_lookup --target native` |
 | 可核对报告 | 上面几项的结果落成 [docs/verification-report.md](docs/verification-report.md)（19 配置覆盖、往返、数据快照、代码规模），CI 重新生成并逐字节 diff，过期即失败 | `moon run cmd/opencc --target native -- verify --report docs/verification-report.md` |
 
@@ -183,8 +187,10 @@ $ node examples/web/demo.mjs
 ```
 data/opencc/dictionary/   19 个词典（单字、词组、地区变体、兼容汉字、篆书）
 data/opencc/config/       19 个转换配置 + schema
+data/opencc/testcases/    官方 testcases 语料（262 例，覆盖全部 19 个配置）
 data/opencc/SHA256SUMS    逐文件校验和
 data/opencc/REVISION      上游仓库、revision、归档哈希与选择理由
+data/derived/             6 个派生词典的可审计文本（由 tools/gen_dict 复刻）
 test/fixtures/golden/     官方一致性语料（1 份输入 + 10 份期望输出）
 ```
 
@@ -252,22 +258,27 @@ docs/                  设计文档与验收标准
 | F6 CLI 与配置覆盖 | `list-configs` / `convert` / `verify`，库入口 `convert(name, text)` | 已完成 |
 | F7 数据表示 | 内嵌文本块 + 运行时建索引：native 测试 341 s → 7 s，解除 plain wasm 上限 | 已完成 |
 | F8 覆盖与属性测试 | 全量条目属性测试、往返一致性检查、缺失词典台账、行粒度与稳定性属性 | 已完成 |
-| F9 按配置裁剪 | 词典/配置各自成包：t2s 构建 249 KB、s2t 913 KB、全量 CLI 1341 KB（wasm-gc） | 已完成 |
+| F9 按配置裁剪 | 词典/配置各自成包：t2s 构建 259 KB、s2t 914 KB、全量 CLI 1622 KB（wasm-gc） | 已完成 |
 | F10 发布 | 已发布到 mooncakes（`Ljh684/opencc` v0.1.0）、GitHub Release 与演示素材 | 已完成 |
 | F11 可核对报告 | `verify --report` 生成 `docs/verification-report.md|json`，CI 重新生成后逐字节 diff | 已完成 |
+| F12 补齐派生词典 | 复刻 OpenCC 构建期生成的 6 个派生词典（`*Rev`、`TSCharactersExt`、地区词组投影），19 个配置再没有缺失的 pass | 已完成 |
+| F13 官方 testcases | 官方 testcases 语料入库并在 `verify` 中逐条比对：19 个配置、262 例 / 583 条期望全部复现 | 已完成 |
+| F14 代理对修复 | 修掉「非基本平面字符被吞」的引擎缺陷（切片起点落在低代理项时为空），补官方回归测试 | 已完成 |
 
 ## 已知限制
 
-- 引擎按 UTF-16 码元切分与比较字符串；因为词典 key 与文本走同一套码元比较，匹配是一致的，
-  增补平面字符（如 CJK 兼容汉字）由归一化词典映射到规范字形后参与匹配。
+- 引擎按 UTF-16 码元切分与比较字符串；因为词典 key 与文本走同一套码元比较，匹配是一致的。
+  复制文本时按**字符**前进（`core::char_width`），不切开代理对——MoonBit 的字符串切片在起点
+  落在低代理项时会返回空视图，这点由官方 testcases（`seal2t`、`t2s`）覆盖。
+- 往返（`s2twp → tw2sp`、`s2hkp → hk2sp`）不是逐字节恒等：`TWPhrasesRev` 并非 `TWPhrases`
+  的精确逆（它把台湾说法映射回正向从未产生的繁体写法）。这是上游数据的性质，`verify` 只把
+  它作为观察打印；正确性由官方 testcases 判定。
 - CLI 还不支持标准输入：MoonBit 的 core 与 `moonbitlang/x` 目前没有标准输入 API，
   加 FFI 会破坏「零 FFI」，因此先用文件与 `--text`；stdout 输出在以换行结尾的文本上
   与输入等价，否则会补一个换行（`-o` 输出文件是逐字节精确的路径）。
-- `cmd/opencc` 需要按名字查找配置，因此会链入全部词典（wasm-gc 1.31 MB）。只想做单一方向
-  的程序请用 `config/<name>` 包，例如 `examples/t2s` 只有 249 KB（见
+- `cmd/opencc` 需要按名字查找配置，因此会链入全部词典（wasm-gc 1622 KB）。只想做单一方向
+  的程序请用 `config/<name>` 包，例如 `examples/t2s` 只有 259 KB（见
   [docs/performance.md](docs/performance.md)）。
-- 反方向配置（`t2s`、`tw2s`、`hk2s`）缺少官方语料可对标，目前只有正向 5 条链的
-  逐字节证据；覆盖与属性测试是下一步。
 - `docs/verification-report.*` 是**生成物**：改动任何 `.mbt` 后重新跑一次
   `moon run cmd/opencc --target native -- verify --report <path>` 即可；忘了重跑时 CI 会在
   diff 这一步直接失败，因此报告不会与代码不一致。

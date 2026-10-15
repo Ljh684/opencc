@@ -7,7 +7,7 @@ pub let name : String = "s2seal"
 pub let title : String = "Simplified Chinese to Small Seal Script"
 
 ///| Dictionaries this configuration references but the snapshot lacks.
-pub let missing : Array[String] = ["seal_characters_rev", ]
+pub let missing : Array[String] = []
 
 ///| Build the conversion chain. Only the dictionaries listed in the package
 /// import are linked in.
@@ -21,6 +21,7 @@ pub fn chain() -> @core.Chain {
     [
       @core.Node::group(@core.ShortCircuit, [@core.Node::group(@core.Union, [@core.Node::leaf(@core.Dict::parse("st_phrases", @st_phrases.st_phrases)), @core.Node::leaf(@core.Dict::parse("st_phrases_generated_from_regional_phrases", @st_phrases_generated_from_regional_phrases.st_phrases_generated_from_regional_phrases))]), @core.Node::leaf(@core.Dict::parse("st_characters", @st_characters.st_characters))]),
       @core.Node::leaf(@core.Dict::parse("seal_variants", @seal_variants.seal_variants)),
+      @core.Node::leaf(@core.Dict::parse("seal_characters_rev", @seal_characters_rev.seal_characters_rev)),
     ],
   )
 }

@@ -4,7 +4,12 @@
 //     opencc list-configs
 //     opencc convert -c <config> --input <file> [--output <file>]
 //     opencc convert -c <config> --text "<string>"
-//     opencc verify [--golden <dir>] [--report <path>]
+//     opencc verify [--golden <dir>] [--testcases <file>] [--report <path>]
+//
+// `verify` compares against both official corpora: the golden corpus (five
+// `s2*` chains, byte for byte) and upstream's test cases (all nineteen
+// configurations). It then prints the round trip as an observation and, with
+// `--report`, writes everything to a document.
 //
 // When no output file is given the converted text goes to stdout and nothing
 // else is printed, so the command can be redirected. MoonBit's console API only
@@ -178,22 +183,14 @@ fn verify_round_trips(dir : String, source : String) -> Array[RoundTripResult] {
         let missing = @config.missing_dictionaries(backward)
         if identical {
           println("  ok   " + name + "  identical to the source text")
-        } else if missing.is_empty() {
-          println(
-            "  FAIL " +
-            name +
-            "  " +
-            differences.to_string() +
-            " differing code units, but the reverse chain is complete",
-          )
         } else {
           println(
-            "  note " +
+            "  --   " +
             name +
             "  " +
             differences.to_string() +
-            " differing code units; missing: " +
-            missing.join(", "),
+            " differing code unit(s); the reverse dictionaries are not the exact" +
+            " inverse of the forward ones, so this is expected",
           )
         }
         results.push({ pair: name, identical, differences, missing, })
@@ -363,10 +360,20 @@ fn convert_command(
 }
 
 ///|
-/// Verify every covered configuration against the golden corpus.
+/// Verify the engine against both official corpora.
+///
+/// The golden corpus pins five `s2*` chains byte for byte; upstream's test cases
+/// cover all nineteen configurations, which is the only official evidence for the
+/// reverse and regional directions. The round trip is printed as an observation,
+/// not a gate: `TWPhrasesRev` is not the exact inverse of `TWPhrases`, so a
+/// difference there is a property of the data.
 ///
 /// Returns the number of failures, so `main` can decide the exit code.
-fn verify_golden(dir : String, report_path : String) -> Int {
+fn verify_all(
+  dir : String,
+  testcases_path : String,
+  report_path : String,
+) -> Int {
   let input_path = dir + "/input/us_constitution_zhs.txt"
   let input = read_text(input_path)
   println(
@@ -432,24 +439,222 @@ fn verify_golden(dir : String, report_path : String) -> Int {
   )
   println("round-trip    :")
   let trips = verify_round_trips(dir, input)
-  let mut trip_failures = 0
-  for trip in trips {
-    if !trip.identical && trip.missing.is_empty() {
-      trip_failures = trip_failures + 1
+  println("test cases    : " + testcases_path)
+  let testcases = verify_testcases(testcases_path)
+  println(
+    "  " +
+    testcases.expectations.to_string() +
+    " official expectation(s) in " +
+    testcases.cases.to_string() +
+    " case(s), " +
+    (testcases.expectations - testcases.failures.length()).to_string() +
+    " reproduced",
+  )
+  for stat in testcases.stats {
+    let total = stat.passed + stat.failed
+    if stat.failed == 0 {
+      println(
+        "  ok   " +
+        stat.config +
+        "  " +
+        total.to_string() +
+        "/" +
+        total.to_string(),
+      )
+    } else {
+      println(
+        "  FAIL " +
+        stat.config +
+        "  " +
+        stat.failed.to_string() +
+        " of " +
+        total.to_string() +
+        " differ",
+      )
     }
   }
-  let failures = failed + trip_failures
+  let mut shown = 0
+  for failure in testcases.failures {
+    if shown < 12 {
+      let offset = first_difference(failure.actual, failure.expected)
+      println(
+        "  FAIL " +
+        failure.id +
+        "  " +
+        failure.config +
+        "  at code unit " +
+        offset.to_string(),
+      )
+      println("         case    : " + failure.id)
+      println("         expected: " + window(failure.expected, offset))
+      println("         actual  : " + window(failure.actual, offset))
+    }
+    shown = shown + 1
+  }
+  if testcases.failures.length() > 12 {
+    println(
+      "  ... " +
+      (testcases.failures.length() - 12).to_string() +
+      " more mismatch(es)",
+    )
+  }
+  let failures = failed + testcases.failures.length()
   if report_path != "" {
     let size = count_source(repository_root(dir))
     let report = if report_path.has_suffix(".json") {
-      render_report_json(input.length(), golden, trips, skipped, size)
+      render_report_json(
+        input.length(),
+        golden,
+        trips,
+        skipped,
+        size,
+        testcases,
+      )
     } else {
-      render_report_markdown(input.length(), golden, trips, skipped, size)
+      render_report_markdown(
+        input.length(),
+        golden,
+        trips,
+        skipped,
+        size,
+        testcases,
+      )
     }
     write_text(report_path, report)
     println("report        : " + report_path + " written")
   }
   failures
+}
+
+///|
+/// One configuration's tally in the official test-case pass.
+struct CaseStat {
+  config : String
+  passed : Int
+  failed : Int
+}
+
+///|
+/// One mismatch in the official test-case pass.
+struct CaseFailure {
+  id : String
+  config : String
+  expected : String
+  actual : String
+}
+
+///|
+/// The official test-case pass: how much of upstream's own suite this engine
+/// reproduces, and where it does not.
+struct TestCaseReport {
+  cases : Int
+  expectations : Int
+  stats : Array[CaseStat]
+  failures : Array[CaseFailure]
+}
+
+///|
+/// A field of a JSON object, or `None`.
+fn json_field(json : Json, key : String) -> Json? {
+  if json is Object(map) {
+    map.get(key)
+  } else {
+    None
+  }
+}
+
+///|
+/// A JSON string field, or the empty string.
+fn json_text(json : Json, key : String) -> String {
+  match json_field(json, key) {
+    Some(String(text)) => text
+    _ => ""
+  }
+}
+
+///|
+/// How many times a counter was bumped.
+fn counter_of(counters : Map[String, Int], key : String) -> Int {
+  match counters.get(key) {
+    Some(value) => value
+    None => 0
+  }
+}
+
+///|
+/// Run upstream's official test cases.
+///
+/// `test/testcases/testcases.json` pairs an input with the output every listed
+/// configuration must produce. The file is JSON with trailing commas, hence the
+/// JSON5 reader. This is the only official evidence that covers the reverse
+/// directions - the golden corpus stops at the five `s2*` chains - so it is what
+/// backs the claim that all nineteen configurations behave like OpenCC.
+fn verify_testcases(path : String) -> TestCaseReport {
+  let passed : Map[String, Int] = Map([])
+  let failed : Map[String, Int] = Map([])
+  let failures : Array[CaseFailure] = []
+  let mut cases = 0
+  let mut expectations = 0
+  let root : Json? = Some(@json5.parse(read_text(path))) catch {
+    _ => {
+      println("  FAIL cannot parse " + path)
+      None
+    }
+  }
+  let items : Array[Json] = match root {
+    Some(json) =>
+      match json_field(json, "cases") {
+        Some(Array(list)) => list
+        _ => []
+      }
+    None => []
+  }
+  if items.is_empty() {
+    println("  FAIL no test cases found in " + path)
+  }
+  for item in items {
+    cases = cases + 1
+    let id = json_text(item, "id")
+    let input = json_text(item, "input")
+    let wanted : Map[String, Json] = match json_field(item, "expected") {
+      Some(Object(map)) => map
+      _ => Map([])
+    }
+    for entry in wanted.iter() {
+      let config_name = entry.0
+      let want = match entry.1 {
+        String(text) => text
+        _ => ""
+      }
+      expectations = expectations + 1
+      let outcome : String? = match @config.convert(config_name, input) {
+        Some(actual) =>
+          if actual == want {
+            passed.set(config_name, counter_of(passed, config_name) + 1)
+            None
+          } else {
+            Some(actual)
+          }
+        None => Some("(unknown configuration)")
+      }
+      match outcome {
+        None => ()
+        Some(actual) => {
+          failed.set(config_name, counter_of(failed, config_name) + 1)
+          failures.push({ id, config: config_name, expected: want, actual, })
+        }
+      }
+    }
+  }
+  let stats : Array[CaseStat] = []
+  for name in @config.chain_names() {
+    let ok = counter_of(passed, name)
+    let bad = counter_of(failed, name)
+    if ok + bad > 0 {
+      stats.push({ config: name, passed: ok, failed: bad, })
+    }
+  }
+  { cases, expectations, stats, failures, }
 }
 
 ///|
@@ -484,7 +689,12 @@ fn json_escape(text : String) -> String {
       out.write_string("\\u")
       out.write_string(hex4(unit))
     } else {
-      out.write_substring(text, index, 1)
+      // Copy whole characters: a slice that starts at a low surrogate is empty,
+      // which would drop characters outside the basic plane.
+      let width = @core.char_width(text, index)
+      out.write_substring(text, index, width)
+      index = index + width
+      continue
     }
     index = index + 1
   }
@@ -702,6 +912,7 @@ fn render_report_markdown(
   trips : Array[RoundTripResult],
   skipped : Int,
   size : SourceSize,
+  testcases : TestCaseReport,
 ) -> String {
   let (entries, derived) = snapshot_totals()
   let names = @config.chain_names()
@@ -758,24 +969,67 @@ fn render_report_markdown(
     skipped.to_string() +
     " `*_jieba` variant(s) skipped (word segmentation is a non-goal, see docs/design.md).\n\n",
   )
+  out.write_string("## Official test cases\n\n")
+  out.write_string(
+    "Upstream's `test/testcases/testcases.json` pairs an input with the output\n" +
+    "every listed configuration must produce. It covers all nineteen\n" +
+    "configurations, including the reverse and regional directions the golden\n" +
+    "corpus stops short of, so reproducing it is what backs the claim that this\n" +
+    "engine behaves like OpenCC everywhere, not only in the five `s2*` chains.\n\n",
+  )
+  out.write_string("| configuration | passed | failed |\n")
+  out.write_string("| --- | --- | --- |\n")
+  let mut case_passed = 0
+  let mut case_failed = 0
+  for stat in testcases.stats {
+    case_passed = case_passed + stat.passed
+    case_failed = case_failed + stat.failed
+    out.write_string(
+      "| `" +
+      stat.config +
+      "` | " +
+      stat.passed.to_string() +
+      " | " +
+      (if stat.failed == 0 {
+        "0"
+      } else {
+        "**" + stat.failed.to_string() + "**"
+      }) +
+      " |\n",
+    )
+  }
+  out.write_string(
+    "| **total** | **" +
+    case_passed.to_string() +
+    "** | **" +
+    case_failed.to_string() +
+    "** |\n\n",
+  )
+  out.write_string(
+    testcases.cases.to_string() +
+    " case(s), " +
+    testcases.expectations.to_string() +
+    " expectation(s); " +
+    case_passed.to_string() +
+    " reproduced byte for byte, " +
+    case_failed.to_string() +
+    " differ.\n\n",
+  )
   out.write_string("## Round trip\n\n")
   out.write_string(
     "Every golden output is converted back with its reverse configuration and\n" +
-    "compared with the source text, byte for byte. `note` means the reverse chain\n" +
-    "is incomplete in this snapshot, so the pair is reported rather than claimed.\n\n",
+    "compared with the source text, byte for byte. This is an observation, not a\n" +
+    "gate: `TWPhrasesRev` is not the exact inverse of `TWPhrases` (it maps Taiwan\n" +
+    "wording back to the Traditional form the forward pass never produced), so a\n" +
+    "difference here is a property of the upstream data. The official test cases\n" +
+    "above are the correctness gate.\n\n",
   )
   out.write_string(
     "| direction | result | differing code units | missing dictionaries |\n",
   )
   out.write_string("| --- | --- | --- | --- |\n")
   for trip in trips {
-    let result = if trip.identical {
-      "identical"
-    } else if trip.missing.is_empty() {
-      "**FAIL**"
-    } else {
-      "note"
-    }
+    let result = if trip.identical { "identical" } else { "differs" }
     out.write_string(
       "| `" +
       trip.pair +
@@ -792,11 +1046,12 @@ fn render_report_markdown(
   out.write_string(
     "All " +
     names.length().to_string() +
-    " built-in configurations. `not covered` means upstream ships no golden\n" +
-    "output for it, so this project does not claim byte-exactness for it;\n" +
-    "`missing dictionaries` lists dictionaries the pinned snapshot does not ship\n" +
-    "(upstream OpenCC generates them during its own build), which the runtime\n" +
-    "skips instead of failing the whole chain.\n\n",
+    " built-in configurations. `golden corpus` marks the ones the golden corpus\n" +
+    "pins byte for byte; the official test cases above cover all of them, which is\n" +
+    "where the reverse and regional directions get their evidence. `missing\n" +
+    "dictionaries` is empty across the board: every dictionary a configuration\n" +
+    "references is either shipped in the snapshot or derived from it by\n" +
+    "`tools/gen_dict`, the same way OpenCC derives it in its own build.\n\n",
   )
   out.write_string("| configuration | golden corpus | missing dictionaries |\n")
   out.write_string("| --- | --- | --- |\n")
@@ -896,6 +1151,7 @@ fn render_report_json(
   trips : Array[RoundTripResult],
   skipped : Int,
   size : SourceSize,
+  testcases : TestCaseReport,
 ) -> String {
   let (entries, derived) = snapshot_totals()
   let names = @config.chain_names()
@@ -970,6 +1226,34 @@ fn render_report_json(
     out.write_string("\n")
   }
   out.write_string("  ],\n")
+  out.write_string("  \"testcases\": {\n")
+  out.write_string("    \"cases\": " + testcases.cases.to_string() + ",\n")
+  out.write_string(
+    "    \"expectations\": " + testcases.expectations.to_string() + ",\n",
+  )
+  out.write_string("    \"configurations\": [\n")
+  index = 0
+  for stat in testcases.stats {
+    out.write_string(
+      "      {\"configuration\": \"" +
+      json_escape(stat.config) +
+      "\", \"passed\": " +
+      stat.passed.to_string() +
+      ", \"failed\": " +
+      stat.failed.to_string() +
+      "}",
+    )
+    index = index + 1
+    if index < testcases.stats.length() {
+      out.write_string(",")
+    }
+    out.write_string("\n")
+  }
+  out.write_string("    ],\n")
+  out.write_string(
+    "    \"mismatches\": " + testcases.failures.length().to_string() + "\n",
+  )
+  out.write_string("  },\n")
   out.write_string("  \"data\": {\n")
   out.write_string(
     "    \"repository\": \"" + json_escape(@dict.upstream_repository) + "\",\n",
@@ -1020,6 +1304,7 @@ fn main {
   let mut extension = ".txt"
   let mut text_arg : String? = None
   let mut golden = "test/fixtures/golden"
+  let mut testcases = "data/opencc/testcases/testcases.json"
   let mut report_path = ""
   let mut index = 0
   while index < args.length() {
@@ -1051,6 +1336,9 @@ fn main {
     } else if arg == "--golden" && index + 1 < args.length() {
       golden = args[index + 1]
       index = index + 2
+    } else if arg == "--testcases" && index + 1 < args.length() {
+      testcases = args[index + 1]
+      index = index + 2
     } else if arg == "--report" && index + 1 < args.length() {
       report_path = args[index + 1]
       index = index + 2
@@ -1066,7 +1354,7 @@ fn main {
   }
 
   if command == "verify" {
-    if verify_golden(golden, report_path) > 0 {
+    if verify_all(golden, testcases, report_path) > 0 {
       @sys.exit(1)
     }
   } else if command == "list-configs" {
@@ -1095,6 +1383,8 @@ fn main {
     println(
       "  opencc convert -c <config> [ -c <config> … ] --input-dir <dir> --output-dir <dir> [--ext .txt]",
     )
-    println("  opencc verify [--golden <dir>] [--report <path>]")
+    println(
+      "  opencc verify [--golden <dir>] [--testcases <file>] [--report <path>]",
+    )
   }
 }

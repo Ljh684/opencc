@@ -32,7 +32,7 @@ pub let chains : Array[ChainSpec] = [
   {
     name: "hk2s",
     title: "Traditional Chinese (Hong Kong variant) to Simplified Chinese",
-    missing: ["hk_variants_rev", "ts_characters_ext", ],
+    missing: [],
     normalization: [
       Spec::Leaf("cjk_compatibility_ideographs"),
     ],
@@ -45,7 +45,7 @@ pub let chains : Array[ChainSpec] = [
   {
     name: "hk2sp",
     title: "Traditional Chinese (Hong Kong variant) to Simplified Chinese (with phrases)",
-    missing: ["hk_variants_rev", "ts_characters_ext", ],
+    missing: [],
     normalization: [
       Spec::Leaf("cjk_compatibility_ideographs"),
     ],
@@ -58,7 +58,7 @@ pub let chains : Array[ChainSpec] = [
   {
     name: "hk2t",
     title: "Traditional Chinese (Hong Kong variant) to Traditional Chinese (OpenCC Standard)",
-    missing: ["hk_variants_rev", ],
+    missing: [],
     normalization: [
       Spec::Leaf("cjk_compatibility_ideographs"),
     ],
@@ -108,7 +108,7 @@ pub let chains : Array[ChainSpec] = [
   {
     name: "s2seal",
     title: "Simplified Chinese to Small Seal Script",
-    missing: ["seal_characters_rev", ],
+    missing: [],
     normalization: [
       Spec::Leaf("cjk_compatibility_ideographs"),
     ],
@@ -160,7 +160,7 @@ pub let chains : Array[ChainSpec] = [
   {
     name: "seal2t",
     title: "Small Seal Script to Traditional Chinese Characters",
-    missing: ["seal_variants_rev", ],
+    missing: [],
     normalization: [
       Spec::Leaf("cjk_compatibility_ideographs"),
     ],
@@ -185,7 +185,7 @@ pub let chains : Array[ChainSpec] = [
   {
     name: "t2jp",
     title: "Old Japanese Kanji (Kyūjitai) to New Japanese Kanji (Shinjitai)",
-    missing: ["jp_shinjitai_characters_rev", ],
+    missing: [],
     normalization: [
       Spec::Leaf("cjk_compatibility_ideographs"),
     ],
@@ -197,7 +197,7 @@ pub let chains : Array[ChainSpec] = [
   {
     name: "t2s",
     title: "Traditional Chinese (OpenCC Standard) to Simplified Chinese",
-    missing: ["ts_characters_ext", ],
+    missing: [],
     normalization: [
       Spec::Leaf("cjk_compatibility_ideographs"),
     ],
@@ -209,7 +209,7 @@ pub let chains : Array[ChainSpec] = [
   {
     name: "t2seal",
     title: "Traditional Chinese Characters to Small Seal Script",
-    missing: ["seal_characters_rev", ],
+    missing: [],
     normalization: [
       Spec::Leaf("cjk_compatibility_ideographs"),
     ],
@@ -234,7 +234,7 @@ pub let chains : Array[ChainSpec] = [
   {
     name: "tw2s",
     title: "Traditional Chinese (Taiwan Standard) to Simplified Chinese",
-    missing: ["tw_variants_rev", "ts_characters_ext", ],
+    missing: [],
     normalization: [
       Spec::Leaf("cjk_compatibility_ideographs"),
     ],
@@ -247,7 +247,7 @@ pub let chains : Array[ChainSpec] = [
   {
     name: "tw2sp",
     title: "Traditional Chinese (Taiwan Standard) to Simplified Chinese (Mainland China Phrases)",
-    missing: ["tw_variants_rev", "ts_characters_ext", ],
+    missing: [],
     normalization: [
       Spec::Leaf("cjk_compatibility_ideographs"),
     ],
@@ -260,7 +260,7 @@ pub let chains : Array[ChainSpec] = [
   {
     name: "tw2t",
     title: "Traditional Chinese (Taiwan Standard) to Traditional Chinese (OpenCC Standard)",
-    missing: ["tw_variants_rev", ],
+    missing: [],
     normalization: [
       Spec::Leaf("cjk_compatibility_ideographs"),
     ],

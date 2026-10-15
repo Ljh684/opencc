@@ -50,6 +50,7 @@ if (-not $root) { throw "Extracted archive did not contain a root directory." }
 
 New-Item -ItemType Directory -Force -Path (Join-Path $destPath "dictionary/staging") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $destPath "config") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $destPath "testcases") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $goldenPath "input") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $goldenPath "output") | Out-Null
 
@@ -64,6 +65,10 @@ Get-ChildItem -Path (Join-Path $root.FullName "data/dictionary") -Recurse -File 
 
 Copy-Item -Path (Join-Path $root.FullName "data/config/*.json") -Destination (Join-Path $destPath "config") -Force
 Copy-Item -Path (Join-Path $root.FullName "LICENSE") -Destination (Join-Path $destPath "OPENCC-LICENSE") -Force
+
+# Official test cases: the only upstream evidence that covers the reverse
+# directions, so `opencc verify` can check them too.
+Copy-Item -Path (Join-Path $root.FullName "test/testcases/testcases.json") -Destination (Join-Path $destPath "testcases") -Force
 
 Copy-Item -Path (Join-Path $root.FullName "test/golden/input/*") -Destination (Join-Path $goldenPath "input") -Force
 Copy-Item -Path (Join-Path $root.FullName "test/golden/output/*") -Destination (Join-Path $goldenPath "output") -Force

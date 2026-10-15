@@ -4,6 +4,26 @@
 // position only scans entries whose key can start there (see docs/design.md).
 
 ///|
+/// How many UTF-16 code units the character starting at `index` spans: two for a
+/// surrogate pair, one otherwise.
+///
+/// Copying has to step over characters, never over single code units: MoonBit's
+/// string slicing returns an empty view when a slice would start at a low
+/// surrogate, so a copy that advanced one code unit at a time silently dropped
+/// every character outside the basic plane (the rare ideographs and the small
+/// seal script the official test cases cover).
+pub fn char_width(text : String, index : Int) -> Int {
+  let unit = text.unsafe_get(index)
+  if unit >= 0xD800 && unit <= 0xDBFF && index + 1 < text.length() {
+    let low = text.unsafe_get(index + 1)
+    if low >= 0xDC00 && low <= 0xDFFF {
+      return 2
+    }
+  }
+  1
+}
+
+///|
 /// Longest match of `text` starting at `start`.
 ///
 /// Returns the matched length and its replacement, or `None` when nothing
@@ -107,19 +127,18 @@ pub fn Node::apply(self : Node, text : String) -> String {
         cursor = cursor + len
       }
       None => {
-        // No key matched here. Copy this code unit and then extend the copy over
+        // No key matched here. Copy this character and then extend the copy over
         // the following ones that cannot start any key either, so an ASCII run
-        // costs one substring write instead of one per character.
+        // costs one substring write instead of one per character. The run starts
+        // and ends on a character boundary, never between the halves of a
+        // surrogate pair (see `char_width`).
         // (`write_substring` takes (start, length) — not an end offset.)
-        out.write_substring(text, cursor, 1)
-        cursor = cursor + 1
-        let run = cursor
+        let run_start = cursor
+        cursor = cursor + char_width(text, cursor)
         while cursor < end && !self.can_start(text.unsafe_get(cursor)) {
-          cursor = cursor + 1
+          cursor = cursor + char_width(text, cursor)
         }
-        if cursor > run {
-          out.write_substring(text, run, cursor - run)
-        }
+        out.write_substring(text, run_start, cursor - run_start)
       }
     }
   }
@@ -165,12 +184,14 @@ fn segment(text : String, dict : Node) -> Array[(Int, Int)] {
         if run_length == 0 {
           run_start = cursor
         }
-        run_length = run_length + 1
-        cursor = cursor + 1
-        // Extend the span over code units that cannot start a key either.
+        run_length = run_length + char_width(text, cursor)
+        cursor = cursor + char_width(text, cursor)
+        // Extend the span over characters that cannot start a key either, one
+        // character at a time so a span never splits a surrogate pair.
         while cursor < end && !dict.can_start(text.unsafe_get(cursor)) {
-          run_length = run_length + 1
-          cursor = cursor + 1
+          let width = char_width(text, cursor)
+          run_length = run_length + width
+          cursor = cursor + width
         }
       }
     }
