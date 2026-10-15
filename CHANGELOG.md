@@ -40,6 +40,14 @@
   `regression/` 包的测试逐个比对——正确性仍由官方 golden 语料保证，基线只锁行为；
   配套工具 `tools/gen_baseline`（`--verify` 供 CI 使用）。
 
+### 发布
+
+- **已发布**：`Ljh684/opencc` v0.1.1 上线 mooncakes（<https://mooncakes.io/docs/Ljh684/opencc>）。
+  安装路径实测：干净模块声明 `Ljh684/opencc@0.1.1` → `moon update` 拉取 → 调用
+  `s2twp` / `tw2sp` / `hk2s` / `t2s` / `seal2t` 五个方向全部命中官方期望，`chain_names()`
+  返回 19 个配置、`missing_dictionaries("t2s")` 为空。
+- GitHub Release [v0.1.1](https://github.com/Ljh684/opencc/releases/tag/v0.1.1)。
+
 ## 0.1.0 — 2026-09-24 起
 
 ### 发布
