@@ -2,6 +2,16 @@
 
 本项目按功能推进，每个功能一个提交；这里记录对外可见的变化。
 
+## Unreleased
+
+- **工具链兼容性复核**：按大赛组委会 2026-11-11 的维护提醒，在官方最新版
+  `moon 0.1.20261104`（`moonc v0.10.20+65efd5b93`）上重跑完整验证——`moon check
+  --target all` 无警告，wasm / wasm-gc / js / native 四后端测试 47/47/47/50 全过，
+  四后端 release 构建、26 词典 / 89817 条生成数据校验、19 个回归基线、golden 5/5 与
+  官方 testcases 583/583、以及 `examples/web` 演示全部正常。`moon.mod` / `moon.pkg`
+  与依赖 `moonbitlang/x@0.5.5` 无需改动，没有新增平台限制。README 新增「工具链兼容」
+  一节记录版本与入口，CI 的 `VALIDATED_MOON_VERSION` 同步到 `0.1.20261104`。
+
 ## 0.1.1 — 2026-10-16
 
 - **补齐派生词典**：按上游脚本（`data/scripts/reverse.py`、`extract_tofu_risk.py`）在

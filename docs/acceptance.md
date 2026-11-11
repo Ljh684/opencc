@@ -5,6 +5,7 @@
 | 官方要求 | 本项目的满足方式 | 自查命令 / 证据 |
 | --- | --- | --- |
 | 以 MoonBit 为主要实现语言 | 引擎、生成器、CLI、测试全部 MoonBit，零 FFI | `moon check --target all`，仓库内无 `extern` FFI 绑定 |
+| 工具链兼容与持续维护 | 在 `moon 0.1.20261104` / `moonc v0.10.20` 上四后端 check/build/test、两个官方语料与示例全部通过；清单与依赖无需改动 | `moon version --all`、CI 的 12 个步骤 |
 | 仓库公开、开发记录连续可追踪 | 公开 GitHub 仓库，W1–W4 每周 2 次以上提交并打 tag | `git log --oneline`、Releases 页 |
 | 清晰 README、可运行示例与必要测试 | README 含 quickstart、19 配置对照表、CLI 示例；`moon test` 一键全跑 | `moon test` 全绿输出 |
 | 已有项目须含本期实质新增工作 | 全新项目；mooncakes 与 GitHub 均无同等能力的包 | 见下方「查重记录」 |

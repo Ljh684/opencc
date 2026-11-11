@@ -37,6 +37,8 @@ let chain = @s2twp.chain()
 > 262 例 / 583 条期望值全部逐字节复现**（含 `t2s`、`tw2s`、`tw2sp`、`hk2s`、`seal2t`
 > 等反方向与地区方向）。`moon check` 无警告，**50 个测试**通过
 > （含覆盖 89817 条词典条目的全量属性测试，以及 19 个配置的回归基线）。
+> **工具链**：在 MoonBit `moon 0.1.20261104`（`moonc v0.10.20`）上实测通过，四后端
+> check / build / test 与两个官方语料全绿；`moon version --all` 可复现该记录。
 > 见下方[路线图](#路线图)。
 
 ---
@@ -149,7 +151,7 @@ python -m http.server                           # 再打开 examples/web/index.h
 
 `examples/web` 是一个 `foreign_library` 包，用 `#export_name` 导出 `opencc_to_taiwan` 与
 `opencc_to_simplified` 两个函数（JS 侧的类型声明见构建产物 `web.d.ts`）。网页 demo 直接调用
-编译后的模块，没有任何网络请求；产物 1.40 MB，只包含 s2twp 与 t2s 两个方向需要的词典。
+编译后的模块，没有任何网络请求；产物约 1.4 MB，只包含 s2twp 与 t2s 两个方向需要的词典。
 
 ```
 $ node examples/web/demo.mjs
@@ -172,6 +174,7 @@ $ node examples/web/demo.mjs
 | 属性测试 | 89817 条词条逐条命中自身 key、分词边界、行粒度、代理对不被拆开、二次转换稳定性 | `moon test`（四个后端） |
 | 性能 | 中文密集 / ASCII 密集两个语料的吞吐 | `moon run tools/bench_lookup --target native` |
 | 可核对报告 | 上面几项的结果落成 [docs/verification-report.md](docs/verification-report.md)（19 配置覆盖、往返、数据快照、代码规模），CI 重新生成并逐字节 diff，过期即失败 | `moon run cmd/opencc --target native -- verify --report docs/verification-report.md` |
+| 工具链兼容 | 在 `moon 0.1.20261104` 上四后端 check/build/test、两个官方语料与示例全部通过；版本记录见[工具链兼容](#工具链兼容) | `moon version --all` |
 
 基线在行为有意变化时才更新：`moon run tools/gen_baseline --target native`，
 理由写进提交信息（见 `test/fixtures/regression/README.md`）。
@@ -218,6 +221,33 @@ moon test
 # 4. 可选：刷新上游 OpenCC 数据快照（已在仓库内，仅升级 revision 时执行）
 #    pwsh -File scripts/fetch-opencc-data.ps1 -Revision <新 revision>
 ```
+
+### 工具链兼容
+
+本项目在 **`moon 0.1.20261104` / `moonc v0.10.20+65efd5b93`（2026-11-05）** 上完整验证过。
+记录版本用：
+
+```bash
+moon version --all
+# moon 0.1.20261104 (940aa18 2026-11-04)
+# moonc v0.10.20+65efd5b93 (2026-11-05)
+```
+
+在该工具链下实测通过的入口（与 CI 的步骤一一对应）：
+
+| 入口 | 结果 |
+| --- | --- |
+| `moon check --target all` | 无警告（534 个任务） |
+| `moon test --target wasm / wasm-gc / js / native` | 47 / 47 / 47 / 50 全部通过 |
+| `moon build --target wasm / wasm-gc / js / native --release` | 全部通过 |
+| `moon run tools/gen_dict --target native -- --verify` | 26 个词典 / 89817 条与仓库逐字节一致 |
+| `moon run tools/gen_baseline --target native -- --verify` | 19 个配置基线一致 |
+| `moon run cmd/opencc --target native -- verify` | golden 5/5 + 官方 testcases 583/583 |
+| `examples/t2s`、`examples/s2t`、`examples/web` + `node demo.mjs` | 构建与演示正常 |
+
+依赖只有官方扩展库 `moonbitlang/x@0.5.5`；清单格式 `moon.mod` / `moon.pkg` 无需改动。
+除下文「已知限制」里写明的标准输入与 `*_jieba` 变体之外，没有平台或版本限制。CI 安装
+`latest` 渠道并在工具链版本变化时给出警告，四个后端、两个官方语料与报告 diff 都是硬性门槛。
 
 ### 仓库结构
 

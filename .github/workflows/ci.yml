@@ -5,13 +5,15 @@ on:
     branches: [main]
   pull_request:
 
-# The snapshot was validated with this toolchain. The download server only serves
+# The project is validated with this toolchain (see the README's "工具链兼容"
+# section). The download server only serves
 # the `latest` and `nightly` channels — version-numbered directories return 404 —
 # so the version cannot be pinned through MOONBIT_INSTALL_VERSION. The workflow
 # installs the default channel and warns (instead of failing) when it moved; the
-# real gates are check, tests, generated-data verification and the golden corpus.
+# real gates are check, the four-backend tests, generated-data verification,
+# both official corpora and the committed verification report.
 env:
-  VALIDATED_MOON_VERSION: "0.1.20260920"
+  VALIDATED_MOON_VERSION: "0.1.20261104"
 
 jobs:
   build-and-verify:
@@ -51,9 +53,11 @@ jobs:
         run: moon update
 
       - name: Toolchain version
+        # `--all` is what the maintenance notice asks for: it records moon,
+        # moonc and moonrun, not just the CLI wrapper.
         run: |
-          moon version
-          if ! moon version | grep -q "$VALIDATED_MOON_VERSION"; then
+          moon version --all
+          if ! moon version --all | grep -q "$VALIDATED_MOON_VERSION"; then
             echo "::warning title=MoonBit toolchain changed::Installed version is not $VALIDATED_MOON_VERSION. Re-validate the snapshot and update VALIDATED_MOON_VERSION deliberately."
           fi
 
